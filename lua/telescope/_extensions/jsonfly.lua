@@ -5,6 +5,14 @@
 ---@field overflow_marker string
 ---@field conceal boolean|"auto"
 ---@field prompt_title string
+---@field highlights Highlights
+---
+---@class Highlights
+---@field number string
+---@field boolean string
+---@field string string
+---@field null string
+---@field other string
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
@@ -59,19 +67,19 @@ local function create_display_preview(value, opts)
             table.insert(preview_table, k .. ": " .. create_display_preview(v.value, opts))
         end
 
-        return "{ " .. table.concat(preview_table, ", ") .. " }", "@label.json"
+        return "{ " .. table.concat(preview_table, ", ") .. " }", "other"
     elseif t == "nil" then
-        return "null", "@constant.builtin.json"
+        return "null", "null"
     elseif t == "number" then
-        return tostring(value), "@number.json"
+        return tostring(value), "number"
     elseif t == "string" then
         if conceal then
-            return value, "@string.json"
+            return value, "string"
         else
-            return "\"" .. value .. "\"", "@string.json"
+            return "\"" .. value .. "\"", "string"
         end
     elseif t == "boolean" then
-        return value and "true" or "false", "@boolean.json"
+        return value and "true" or "false", "boolean"
     end
 end
 
@@ -84,6 +92,13 @@ return require"telescope".register_extension {
             opts.key_max_length = opts.key_max_length or 50
             opts.max_length = opts.max_length or 9999
             opts.overflow_marker = opts.overflow_marker or "…"
+            opts.highlights = opts.highlights or {
+                string = "@string.json",
+                number = "@number.json",
+                boolean = "@boolean.json",
+                null = "@constant.builtin.json",
+                other = "@label.json",
+            }
 
             if opts.conceal == nil then
                 opts.conceal = "auto"
@@ -118,7 +133,7 @@ return require"telescope".register_extension {
                             value = current_buf,
                             ordinal = entry.key,
                             display = function(_)
-                                local preview, hl_group = create_display_preview(entry.entry.value, opts)
+                                local preview, hl_group_key = create_display_preview(entry.entry.value, opts)
 
                                 return displayer {
                                     { depth, "TelescopeResultsNumber"},
@@ -129,7 +144,7 @@ return require"telescope".register_extension {
                                             opts.max_length,
                                             opts.overflow_marker
                                         ),
-                                        hl_group,
+                                        opts.highlights[hl_group_key] or "TelescopeResultsString",
                                     },
                                 }
                             end,
