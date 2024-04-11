@@ -316,13 +316,25 @@ local function grok_string(self, text, start, options)
 end
 
 local function skip_whitespace(text, start)
-
    local _, match_end = text:find("^[ \n\r\t]+", start) -- [http://www.ietf.org/rfc/rfc4627.txt] Section 2
    if match_end then
       return match_end + 1
    else
       return start
    end
+end
+
+-- Count newlines in `text` up to `start`
+local function count_newlines(text, start)
+    local _, count = text:sub(1, start):gsub('\n', '\n')
+
+    return count
+end
+
+-- Count characters from `i` to previous newline
+local function get_relative_i(text, i)
+    local _, count = text:sub(1, i):gsub('\n', '\n')
+    return i - count
 end
 
 local grok_one -- assigned later
@@ -345,6 +357,12 @@ local function grok_object(self, text, start, options)
    while i <= text_len do
       local key, new_i = grok_string(self, text, i, options)
 
+      ---- Find start of JSON key
+      local key_start = i
+      local key_end = new_i - 2
+      local newlines = count_newlines(text, key_start)
+      local relative_start = get_relative_i(text, key_start)
+
       i = skip_whitespace(text, new_i)
 
       if text:sub(i, i) ~= ':' then
@@ -357,7 +375,7 @@ local function grok_object(self, text, start, options)
       local new_val, new_i = grok_one(self, text, i, options)
 
       ---- Add start position so we can quickly jump to it
-      VALUE[key] = {new_val, new_i}
+      VALUE[key] = {new_val, key_start = key_start, key_end = key_end, newlines = newlines, relative_start = relative_start}
 
       --
       -- Expect now either '}' to end things, or a ',' to allow us to continue.
