@@ -1,3 +1,11 @@
+--- Type definitions
+---@class Options
+---@field key_max_length number
+---@field max_length number
+---@field overflow_marker string
+---@field conceal boolean|"auto"
+---@field prompt_title string
+
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
 local pickers = require "telescope.pickers"
@@ -32,14 +40,23 @@ local function truncate_overflow(value, max_length, overflow_marker)
     return value
 end
 
-local function create_display_preview(value)
+---@param value any
+---@param opts Options
+local function create_display_preview(value, opts)
     local t = type(value)
+    local conceal
+
+    if opts.conceal == "auto" then
+        conceal = vim.o.conceallevel > 0
+    else
+        conceal = opts.conceal
+    end
 
     if t == "table" then
         local preview_table = {}
 
         for k, v in pairs(value) do
-            table.insert(preview_table, k .. ": " .. create_display_preview(v.value))
+            table.insert(preview_table, k .. ": " .. create_display_preview(v.value, opts))
         end
 
         return "{ " .. table.concat(preview_table, ", ") .. " }", "@label.json"
@@ -48,7 +65,11 @@ local function create_display_preview(value)
     elseif t == "number" then
         return tostring(value), "@number.json"
     elseif t == "string" then
-        return value, "@string.json"
+        if conceal then
+            return value, "@string.json"
+        else
+            return "\"" .. value .. "\"", "@string.json"
+        end
     elseif t == "boolean" then
         return value and "true" or "false", "@boolean.json"
     end
@@ -57,11 +78,16 @@ end
 return require"telescope".register_extension {
     setup = function() end,
     exports = {
+        ---@param opts Options
         jsonfly = function(opts)
             opts = opts or {}
             opts.key_max_length = opts.key_max_length or 50
             opts.max_length = opts.max_length or 9999
             opts.overflow_marker = opts.overflow_marker or "…"
+
+            if opts.conceal == nil then
+                opts.conceal = "auto"
+            end
 
             local current_buf = vim.api.nvim_get_current_buf()
             local filename = vim.api.nvim_buf_get_name(current_buf)
@@ -92,7 +118,7 @@ return require"telescope".register_extension {
                             value = current_buf,
                             ordinal = entry.key,
                             display = function(_)
-                                local preview, hl_group = create_display_preview(entry.entry.value)
+                                local preview, hl_group = create_display_preview(entry.entry.value, opts)
 
                                 return displayer {
                                     { depth, "TelescopeResultsNumber"},
