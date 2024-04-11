@@ -1,18 +1,18 @@
 --- Type definitions
 ---@class Options
----@field key_max_length number
----@field max_length number
----@field overflow_marker string
----@field conceal boolean|"auto"
----@field prompt_title string
----@field highlights Highlights
+---@field key_max_length number - Length for the key column, 0 for no column-like display, Default: 50
+---@field max_length number - Maximum length for the value column, Default: 9999 (basically no limit)
+---@field overflow_marker string - Marker for truncated values, Default: "…"
+---@field conceal boolean|"auto" - Whether to conceal strings, If `true` strings will be concealed, If `false` strings will be displayed as they are, If `"auto"` strings will be concealed if `conceallevel` is greater than 0, Default: "auto"
+---@field prompt_title string - Title for the prompt, Default: "JSON(fly)"
+---@field highlights Highlights - Highlight groups for different types
 ---
 ---@class Highlights
----@field number string
----@field boolean string
----@field string string
----@field null string
----@field other string
+---@field number string - Highlight group for numbers, Default: "@number.json"
+---@field boolean string - Highlight group for booleans, Default: "@boolean.json"
+---@field string string - Highlight group for strings, Default: "@string.json"
+---@field null string - Highlight group for null values, Default: "@constant.builtin.json"
+---@field other string - Highlight group for other types, Default: "@label.json"
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
@@ -89,6 +89,7 @@ return require"telescope".register_extension {
         ---@param opts Options
         jsonfly = function(opts)
             opts = opts or {}
+            opts.prompt_title = opts.prompt_title or "JSON(fly)"
             opts.key_max_length = opts.key_max_length or 50
             opts.max_length = opts.max_length or 9999
             opts.overflow_marker = opts.overflow_marker or "…"
@@ -122,7 +123,7 @@ return require"telescope".register_extension {
             }
 
             pickers.new(opts, {
-                prompt_title = "colors",
+                prompt_title = opts.prompt_title,
                 finder = finders.new_table {
                     results = keys,
                     entry_maker = function(entry)
