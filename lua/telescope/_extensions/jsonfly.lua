@@ -141,9 +141,9 @@ return require"telescope".register_extension {
                                     { entry.key, "@property.json" },
                                     {
                                         truncate_overflow(
-                                            preview,
-                                            opts.max_length,
-                                            opts.overflow_marker
+                                        preview,
+                                        opts.max_length,
+                                        opts.overflow_marker
                                         ),
                                         opts.highlights[hl_group_key] or "TelescopeResultsString",
                                     },
@@ -159,6 +159,7 @@ return require"telescope".register_extension {
                 },
                 previewer = conf.grep_previewer(opts),
                 sorter = conf.generic_sorter(opts),
+                sorting_strategy = "ascending",
             }):find()
         end
     }
