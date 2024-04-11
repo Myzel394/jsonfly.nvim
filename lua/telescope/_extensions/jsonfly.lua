@@ -10,7 +10,7 @@ local function get_recursive_keys(t)
     for k, raw_value in pairs(t) do
         table.insert(keys, {key = k, entry = raw_value})
 
-        local v = raw_value[0]
+        local v = raw_value.value
 
         if type(v) == "table" then
             local sub_keys = get_recursive_keys(v)
@@ -37,7 +37,7 @@ return require"telescope".register_extension {
             local parsed = json:decode(content)
             local keys = get_recursive_keys(parsed)
 
-            print(vim.inspect(keys))
+            -- print(vim.inspect(keys))
 
             pickers.new(opts, {
                 prompt_title = "colors",
@@ -52,6 +52,9 @@ return require"telescope".register_extension {
                             bufnr = current_buf,
                             filename = filename,
                             lnum = entry.entry.newlines + 1,
+                            col = 2,
+                            start = 2,
+                            finish = 8,
 
                             indicator = 0,
                             extra = 0,

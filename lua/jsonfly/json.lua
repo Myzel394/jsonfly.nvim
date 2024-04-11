@@ -375,7 +375,7 @@ local function grok_object(self, text, start, options)
       local new_val, new_i = grok_one(self, text, i, options)
 
       ---- Add start position so we can quickly jump to it
-      VALUE[key] = {new_val, key_start = key_start, key_end = key_end, newlines = newlines, relative_start = relative_start}
+      VALUE[key] = {value = new_val, key_start = key_start, key_end = key_end, newlines = newlines, relative_start = relative_start}
 
       --
       -- Expect now either '}' to end things, or a ',' to allow us to continue.
