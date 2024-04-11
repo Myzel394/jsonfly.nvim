@@ -111,7 +111,7 @@ return require"telescope".register_extension {
                 finder = finders.new_table {
                     results = keys,
                     entry_maker = function(entry)
-                        local _, raw_depth = entry.key:gsub(".", ".")
+                        local _, raw_depth = entry.key:gsub("%.", ".")
                         local depth = (raw_depth or 0) + 1
 
                         return make_entry.set_default_entry_mt({
@@ -122,7 +122,7 @@ return require"telescope".register_extension {
 
                                 return displayer {
                                     { depth, "TelescopeResultsNumber"},
-                                    { entry.key .. ": ", "@property.json" },
+                                    { entry.key, "@property.json" },
                                     {
                                         truncate_overflow(
                                             preview,
