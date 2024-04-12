@@ -21,28 +21,28 @@ Install with your favorite plugin manager, for example with [lazy.nvim](https://
         -- Other dependencies
         -- ..
         "Myzel394/jsonfly.nvim",
-    },
-},
+    }
+}
 ```
 
-Here's how I load it with lazy.nvim with lazy-loading :)
+Here's how I load it with lazy.nvim with lazy-loading and `<leader>j` as the keymap :)
 
 ```lua
-    {
-        "nvim-telescope/telescope.nvim",
-        dependencies = {
-            "Myzel394/jsonfly.nvim",
-        },
-        keys = {
-            {
-                "<leader>j",
-                "<cmd>Telescope jsonfly<cr>",
-                desc = "Open json(fly)",
-                ft = { "json" },
-                mode = "n"
-            },
-        }
+{
+    "nvim-telescope/telescope.nvim",
+    dependencies = {
+        "Myzel394/jsonfly.nvim",
     },
+    keys = {
+        {
+            "<leader>j",
+            "<cmd>Telescope jsonfly<cr>",
+            desc = "Open json(fly)",
+            ft = { "json" },
+            mode = "n"
+        }
+    }
+}
 ```
 
 Load the extension with:
@@ -106,5 +106,5 @@ require"telescope".setup {
 
 ## Acknowledgements
 
-- JSON parsing is done with [Jeffrey Friedl's JSON library](http://regex.info/blog/lua/json
+- JSON parsing is done with [Jeffrey Friedl's JSON library](http://regex.info/blog/lua/json)
 
