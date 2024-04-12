@@ -6,6 +6,7 @@
 ---@field conceal boolean|"auto" - Whether to conceal strings, If `true` strings will be concealed, If `false` strings will be displayed as they are, If `"auto"` strings will be concealed if `conceallevel` is greater than 0, Default: "auto"
 ---@field prompt_title string - Title for the prompt, Default: "JSON(fly)"
 ---@field highlights Highlights - Highlight groups for different types
+---@field jump_behavior "key_start"|"value_start" - Behavior for jumping to the location, "key_start" == Jump to the start of the key, "value_start" == Jump to the start of the value, Default: "key_start"
 ---
 ---@class Highlights
 ---@field number string - Highlight group for numbers, Default: "@number.json"
@@ -100,6 +101,7 @@ return require"telescope".register_extension {
                 null = "@constant.builtin.json",
                 other = "@label.json",
             }
+            opts.jump_behavior = opts.jump_behavior or "key_start"
 
             if opts.conceal == nil then
                 opts.conceal = "auto"
@@ -153,7 +155,10 @@ return require"telescope".register_extension {
                             bufnr = current_buf,
                             filename = filename,
                             lnum = entry.entry.newlines + 1,
-                            col = entry.entry.relative_start,
+                            col = opts.jump_behavior == "key_start"
+                                    and entry.entry.key_start
+                                    -- Use length ("#" operator) as vim jumps to the bytes, not characters
+                                    or entry.entry.value_start
                         }, opts)
                     end,
                 },

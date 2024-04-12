@@ -370,7 +370,6 @@ local function grok_object(self, text, start, options)
 
       ---- Find start of JSON key
       local key_start = i
-      local key_end = new_i - 2
       local newlines = count_newlines(text, key_start)
       local relative_start = get_relative_i(text, key_start)
 
@@ -388,10 +387,9 @@ local function grok_object(self, text, start, options)
       ---- Add start position so we can quickly jump to it
       VALUE[key] = {
           value = new_val,
-          key_start = key_start,
-          key_end = key_end,
           newlines = newlines or 0,
-          relative_start = relative_start,
+          key_start = relative_start + 1,
+          value_start = get_relative_i(text, i),
       }
 
       --
@@ -437,17 +435,16 @@ local function grok_array(self, text, start, options)
       local newlines = count_newlines(text, i)
       local relative_start = get_relative_i(text, i)
 
+      i = skip_whitespace(text, new_i)
+
       -- can't table.insert(VALUE, val) here because it's a no-op if val is nil
       VALUE[VALUE_INDEX] = {
           value = val,
-          key_start = new_i,
-          key_end = new_i,
           newlines = newlines or 0,
-          relative_start = relative_start,
+          value_start = relative_start,
+          key_start = relative_start,
       }
       VALUE_INDEX = VALUE_INDEX + 1
-
-      i = skip_whitespace(text, new_i)
 
       --
       -- Expect now either ']' to end things, or a ',' to allow us to continue.
