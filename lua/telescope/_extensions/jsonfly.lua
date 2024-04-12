@@ -1,6 +1,7 @@
 --- Type definitions
 ---@class Options
 ---@field key_max_length number - Length for the key column, 0 for no column-like display, Default: 50
+---@field key_exact_length boolean - Whether to use exact length for the key column, This will pad the key column with spaces to match the length, Default: false
 ---@field max_length number - Maximum length for the value column, Default: 9999 (basically no limit)
 ---@field overflow_marker string - Marker for truncated values, Default: "…"
 ---@field conceal boolean|"auto" - Whether to conceal strings, If `true` strings will be concealed, If `false` strings will be displayed as they are, If `"auto"` strings will be concealed if `conceallevel` is greater than 0, Default: "auto"
@@ -84,29 +85,30 @@ local function create_display_preview(value, opts)
     end
 end
 
+---@type Options
+local opts = {
+    key_max_length = 50,
+    key_exact_length = false,
+    max_length = 9999,
+    overflow_marker = "…",
+    conceal = "auto",
+    prompt_title = "JSON(fly)",
+    highlights = {
+        string = "@string.json",
+        number = "@number.json",
+        boolean = "@boolean.json",
+        null = "@constant.builtin.json",
+        other = "@label.json",
+    },
+    jump_behavior = "key_start",
+}
+
 return require"telescope".register_extension {
-    setup = function() end,
+    setup = function(extension_config)
+        opts = vim.tbl_deep_extend("force", opts, extension_config or {})
+    end,
     exports = {
-        ---@param opts Options
-        jsonfly = function(opts)
-            opts = opts or {}
-            opts.prompt_title = opts.prompt_title or "JSON(fly)"
-            opts.key_max_length = opts.key_max_length or 50
-            opts.max_length = opts.max_length or 9999
-            opts.overflow_marker = opts.overflow_marker or "…"
-            opts.highlights = opts.highlights or {
-                string = "@string.json",
-                number = "@number.json",
-                boolean = "@boolean.json",
-                null = "@constant.builtin.json",
-                other = "@label.json",
-            }
-            opts.jump_behavior = opts.jump_behavior or "key_start"
-
-            if opts.conceal == nil then
-                opts.conceal = "auto"
-            end
-
+        jsonfly = function()
             local current_buf = vim.api.nvim_get_current_buf()
             local filename = vim.api.nvim_buf_get_name(current_buf)
             local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
@@ -119,7 +121,7 @@ return require"telescope".register_extension {
                 separator = " ",
                 items = {
                     { width = 1 },
-                    { width = opts.key_max_length },
+                    opts.key_exact_length and { width = opts.key_max_length } or { remaining = true },
                     { remaining = true },
                 },
             }
@@ -140,7 +142,14 @@ return require"telescope".register_extension {
 
                                 return displayer {
                                     { depth, "TelescopeResultsNumber"},
-                                    { entry.key, "@property.json" },
+                                    {
+                                        truncate_overflow(
+                                            entry.key,
+                                            opts.key_max_length,
+                                            opts.overflow_marker
+                                        ),
+                                        "@property.json",
+                                    },
                                     {
                                         truncate_overflow(
                                             preview,
