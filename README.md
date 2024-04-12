@@ -104,6 +104,20 @@ require"telescope".setup {
 }
 ```
 
+### Example: Waterfall keys
+
+<img src="docs/waterfall_keys.png">
+
+```lua
+require"telescope".setup {
+    extensions = {
+        jsonfly = {
+            subkeys_display = "waterfall"
+        }
+    }
+}
+```
+
 ## Acknowledgements
 
 - JSON parsing is done with [Jeffrey Friedl's JSON library](http://regex.info/blog/lua/json)

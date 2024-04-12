@@ -8,6 +8,7 @@
 ---@field prompt_title string - Title for the prompt, Default: "JSON(fly)"
 ---@field highlights Highlights - Highlight groups for different types
 ---@field jump_behavior "key_start"|"value_start" - Behavior for jumping to the location, "key_start" == Jump to the start of the key, "value_start" == Jump to the start of the value, Default: "key_start"
+---@field subkeys_display "normal"|"waterfall" - Display subkeys in a normal or waterfall style, Default: "normal"
 ---
 ---@class Highlights
 ---@field number string - Highlight group for numbers, Default: "@number.json"
@@ -85,6 +86,24 @@ local function create_display_preview(value, opts)
     end
 end
 
+---@param key string
+---@param replacement string
+---@return string
+---Replaces all previous keys with the replacement
+---Example: replace_previous_keys("a.b.c", "x") => "xxx.c"
+local function replace_previous_keys(key, replacement)
+    for i = #key, 1, -1 do
+        if key:sub(i, i) == "." then
+            local len = i - 1
+            local before = replacement:rep(len)
+
+            return before .. "." .. key:sub(i + 1)
+        end
+    end
+
+    return key
+end
+
 ---@type Options
 local opts = {
     key_max_length = 50,
@@ -101,6 +120,7 @@ local opts = {
         other = "@label.json",
     },
     jump_behavior = "key_start",
+    subkeys_display = "normal",
 }
 
 return require"telescope".register_extension {
@@ -140,11 +160,13 @@ return require"telescope".register_extension {
                             display = function(_)
                                 local preview, hl_group_key = create_display_preview(entry.entry.value, opts)
 
+                                local key = opts.subkeys_display == "normal" and entry.key or replace_previous_keys(entry.key, " ")
+
                                 return displayer {
                                     { depth, "TelescopeResultsNumber"},
                                     {
-                                        truncate_overflow(
-                                            entry.key,
+                                         truncate_overflow(
+                                            key,
                                             opts.key_max_length,
                                             opts.overflow_marker
                                         ),
