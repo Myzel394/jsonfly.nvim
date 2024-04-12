@@ -332,9 +332,20 @@ local function count_newlines(text, start)
 end
 
 -- Count characters from `i` to previous newline
+-- {hello:sa\nmple\n    test}
 local function get_relative_i(text, i)
-    local _, count = text:sub(1, i):gsub('\n', '\n')
-    return i - count
+    -- Find next newline from `i` backwards
+
+    local count = 0
+
+    for j = i, 1, -1 do
+        if text:sub(j, j) == '\n' then
+            break
+        end
+        count = count + 1
+    end
+
+    return count
 end
 
 local grok_one -- assigned later
