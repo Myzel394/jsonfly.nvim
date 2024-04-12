@@ -6,7 +6,7 @@ Search ✨ blazingly fast ✨ for keys via [Telescope](https://github.com/nvim-t
 json(fly) is a Telescope extension that will show you all keys (including nested ones) in your JSON files and allow you to search and jump to them quickly.
 It's completely customizable and even supports highlighting of the values.
 
-<img src="docs/horizontal_layout.png" width="600">
+<img src="docs/horizontal_layout.png">
 
 ## Installation
 
@@ -65,7 +65,7 @@ Please see [jsonfly.lua](https://github.com/Myzel394/jsonfly/blob/main/lua/teles
 
 ### Example: Vertical layout
 
-<img src="docs/vertical_layout.png" width="200">
+<img src="docs/vertical_layout.png">
 
 ```lua
 require"telescope".setup {
@@ -86,7 +86,7 @@ require"telescope".setup {
 
 ### Example: Horizontal layout
 
-<img src="docs/horizontal_layout.png" width="200">
+<img src="docs/horizontal_layout.png">
 
 ```lua
 require"telescope".setup {
