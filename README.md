@@ -8,6 +8,14 @@ It's completely customizable and even supports highlighting of the values.
 
 <img src="docs/horizontal_layout.png">
 
+## Features
+
+* 🔍 Search for deeply nested keys - `expo.android.imageAsset.0.uri`
+* 🎨 See values with their correct syntax highlighting (numbers, strings, booleans, null; configurable)
+* 💻 Use your LSP or the built-in JSON parser
+* 🫣 Automatic concealment based on your configuration
+* 📐 Everything completely customizable!
+
 ## Installation
 
 Install with your favorite plugin manager, for example with [lazy.nvim](https://github.com/folke/lazy.nvim):
