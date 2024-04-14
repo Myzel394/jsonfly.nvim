@@ -14,6 +14,11 @@
 ---@field value_start number
 ---@field key_start number
 
+local PRIMITIVE_TYPES = {
+    string = true,
+    number = true,
+    boolean = true,
+}
 
 local M = {}
 
@@ -35,9 +40,13 @@ local function get_contents_from_json_value(entry)
     end
 end
 
----@param t table
+---@param t table|nil|string|number
 ---@return Entry[]
 function M:get_entries_from_lua_json(t)
+    if PRIMITIVE_TYPES[type(t)] or t == nil then
+        return {}
+    end
+
     local keys = {}
 
     for k, _raw_value in pairs(t) do
@@ -60,15 +69,17 @@ function M:get_entries_from_lua_json(t)
         if type(v) == "table" then
             local sub_keys = M:get_entries_from_lua_json(v)
 
-            for _, sub_key in ipairs(sub_keys) do
+            for index=1, #sub_keys do
+                local sub_key = sub_keys[index]
+
                 ---@type Entry
                 local entry = {
                     key = k .. "." .. sub_key.key,
-                    value = get_contents_from_json_value(sub_key),
+                    value = sub_key.value,
                     position = sub_key.position,
                 }
 
-                table.insert(keys, entry)
+                keys[#keys + 1] = entry
             end
         end
     end

@@ -63,12 +63,13 @@ local function show_picker(results, buffer)
             { remaining = true },
         },
     }
+    ---@type boolean
     local conceal
 
     if opts.conceal == "auto" then
         conceal = vim.o.conceallevel > 0
     else
-        conceal = opts.conceal
+        conceal = opts.conceal == true
     end
 
     pickers.new(opts, {
