@@ -128,7 +128,8 @@ end
 function M:get_entries_from_lsp_symbols(symbols)
     local keys = {}
 
-    for _, symbol in ipairs(symbols) do
+    for index=1, #symbols do
+        local symbol = symbols[index]
         local key = symbol.name
 
         ---@type Entry
@@ -145,20 +146,20 @@ function M:get_entries_from_lsp_symbols(symbols)
                 value_start = symbol.selectionRange["end"].character + 3,
             }
         }
-        table.insert(keys, entry)
+        keys[#keys + 1] = entry
 
         if symbol.kind == 2 then
             local sub_keys = M:get_entries_from_lsp_symbols(symbol.children)
 
-            for _, sub_key in ipairs(sub_keys) do
+            for jindex=1, #sub_keys do
                 ---@type Entry
                 local entry = {
-                    key = key .. "." .. sub_key.key,
-                    value = sub_key.value,
-                    position = sub_key.position,
+                    key = key .. "." .. sub_keys[jindex].key,
+                    value = sub_keys[jindex].value,
+                    position = sub_keys[jindex].position,
                 }
 
-                table.insert(keys, entry)
+                keys[#keys + 1] = entry
             end
         end
     end

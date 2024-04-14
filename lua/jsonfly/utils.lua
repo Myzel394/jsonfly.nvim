@@ -9,22 +9,15 @@ function M:truncate_overflow(value, max_length, overflow_marker)
 end
 
 ---@param value any
----@param opts Options
-function M:create_display_preview(value, opts)
+---@param conceal boolean
+function M:create_display_preview(value, conceal)
     local t = type(value)
-    local conceal
-
-    if opts.conceal == "auto" then
-        conceal = vim.o.conceallevel > 0
-    else
-        conceal = opts.conceal
-    end
 
     if t == "table" then
         local preview_table = {}
 
         for k, v in pairs(value) do
-            table.insert(preview_table, k .. ": " .. M:create_display_preview(v, opts))
+            preview_table[#preview_table + 1] = k .. ": " .. M:create_display_preview(v, conceal)
         end
 
         return "{ " .. table.concat(preview_table, ", ") .. " }", "other"

@@ -63,6 +63,13 @@ local function show_picker(results, buffer)
             { remaining = true },
         },
     }
+    local conceal
+
+    if opts.conceal == "auto" then
+        conceal = vim.o.conceallevel > 0
+    else
+        conceal = opts.conceal
+    end
 
     pickers.new(opts, {
         prompt_title = opts.prompt_title,
@@ -77,11 +84,9 @@ local function show_picker(results, buffer)
                     value = buffer,
                     ordinal = entry.key,
                     display = function(_)
-                        local preview, hl_group_key = utils:create_display_preview(entry.value, opts)
+                        local preview, hl_group_key = utils:create_display_preview(entry.value, conceal)
 
                         local key = opts.subkeys_display == "normal" and entry.key or utils:replace_previous_keys(entry.key, " ")
-
-                        print(vim.inspect(entry))
 
                         return displayer {
                             { depth, "TelescopeResultsNumber"},
