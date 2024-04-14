@@ -142,7 +142,7 @@ function M:get_entries_from_lsp_symbols(symbols)
                 -- We assume a default JSON file like:
                 -- `"my_key": "my_value"`
                 -- Since we get the end of the key, we can just add 4 to get the start of the value
-                value_start = symbol.selectionRange["end"].character + 4
+                value_start = symbol.selectionRange["end"].character + 3,
             }
         }
         table.insert(keys, entry)

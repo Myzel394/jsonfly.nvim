@@ -47,7 +47,7 @@ local opts = {
     },
     jump_behavior = "key_start",
     subkeys_display = "normal",
-    backend = "lua",
+    backend = "lsp",
 }
 
 ---@param results Entry[]
