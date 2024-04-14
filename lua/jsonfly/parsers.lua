@@ -7,21 +7,48 @@
 ---@field key string
 ---@field value Entry|table|number|string|boolean|nil
 ---@field position EntryPosition
+--
+---@class JSONEntry
+---@field value JSONEntry|string|number|boolean|nil
+---@field line_number number
+---@field value_start number
+---@field key_start number
+
 
 local M = {}
+
+---@param entry JSONEntry
+local function get_contents_from_json_value(entry)
+    local value = entry.value
+
+    if type(value) == "table" then
+        -- Recursively get the contents of the table
+        local contents = {}
+
+        for k, v in pairs(value) do
+            contents[k] = get_contents_from_json_value(v)
+        end
+
+        return contents
+    else
+        return entry.value
+    end
+end
 
 ---@param t table
 ---@return Entry[]
 function M:get_entries_from_lua_json(t)
     local keys = {}
 
-    for k, raw_value in pairs(t) do
+    for k, _raw_value in pairs(t) do
+        ---@type JSONEntry
+        local raw_value = _raw_value
         ---@type Entry
         local entry = {
             key = k,
-            value = raw_value,
+            value = get_contents_from_json_value(raw_value),
             position = {
-                line_number = raw_value.newlines,
+                line_number = raw_value.line_number,
                 key_start = raw_value.key_start,
                 value_start = raw_value.value_start,
             }
@@ -37,7 +64,7 @@ function M:get_entries_from_lua_json(t)
                 ---@type Entry
                 local entry = {
                     key = k .. "." .. sub_key.key,
-                    value = sub_key,
+                    value = get_contents_from_json_value(sub_key),
                     position = sub_key.position,
                 }
 
@@ -109,7 +136,7 @@ function M:get_entries_from_lsp_symbols(symbols)
             key = key,
             value = M:parse_lsp_value(symbol),
             position = {
-                line_number = symbol.range.start.line + 2,
+                line_number = symbol.range.start.line + 1,
                 key_start = symbol.range.start.character + 2,
                 -- The LSP doesn't return the start of the value, so we'll just assume it's 3 characters after the key
                 -- We assume a default JSON file like:
