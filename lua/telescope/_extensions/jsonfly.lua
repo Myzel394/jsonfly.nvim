@@ -42,8 +42,6 @@ local entry_display = require "telescope.pickers.entry_display"
 local function get_entries_from_lua_json(t)
     local keys = {}
 
-    --@type k string
-    --@type raw_value InputEntry
     for k, raw_value in pairs(t) do
         ---@type Entry
         local entry = {
@@ -133,6 +131,22 @@ local function get_entries_from_lsp_symbols(symbols)
     for _, symbol in ipairs(symbols) do
         local key = symbol.name
 
+        ---@type Entry
+        local entry = {
+            key = key,
+            value = parse_lsp_value(symbol),
+            position = {
+                line_number = symbol.range.start.line + 2,
+                key_start = symbol.range.start.character + 2,
+                -- The LSP doesn't return the start of the value, so we'll just assume it's 3 characters after the key
+                -- We assume a default JSON file like:
+                -- `"my_key": "my_value"`
+                -- Since we get the end of the key, we can just add 4 to get the start of the value
+                value_start = symbol.selectionRange["end"].character + 4
+            }
+        }
+        table.insert(keys, entry)
+
         if symbol.kind == 2 then
             local sub_keys = get_entries_from_lsp_symbols(symbol.children)
 
@@ -147,18 +161,6 @@ local function get_entries_from_lsp_symbols(symbols)
                 table.insert(keys, entry)
             end
         end
-
-        ---@type Entry
-        local entry = {
-            key = key,
-            value = parse_lsp_value(symbol),
-            position = {
-                line_number = symbol.range["end"].line,
-                key_start = symbol.range.start.character,
-                value_start = symbol.selectionRange.start.character,
-            }
-        }
-        table.insert(keys, entry)
     end
 
     return keys
@@ -283,8 +285,6 @@ return require"telescope".register_extension {
                             entry_maker = function(entry)
                                 local _, raw_depth = entry.key:gsub("%.", ".")
                                 local depth = (raw_depth or 0) + 1
-
-                                print(vim.inspect(entry))
 
                                 return make_entry.set_default_entry_mt({
                                     value = current_buf,
