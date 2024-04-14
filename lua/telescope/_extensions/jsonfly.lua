@@ -1,3 +1,4 @@
+---- Documentation for jsonfly ----
 --- Type definitions
 ---@class Options
 ---@field key_max_length number - Length for the key column, 0 for no column-like display, Default: 50
@@ -17,6 +18,18 @@
 ---@field null string - Highlight group for null values, Default: "@constant.builtin.json"
 ---@field other string - Highlight group for other types, Default: "@label.json"
 
+---- Types below are for internal use only ----
+--
+---@class EntryPosition
+---@field line_number number
+---@field key_start number
+---@field value_start number
+--
+---@class Entry
+---@field key string
+---@field value Entry|table|number|string|boolean|nil
+---@field position EntryPosition
+
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
 local pickers = require "telescope.pickers"
@@ -24,16 +37,6 @@ local conf = require("telescope.config").values
 local make_entry = require "telescope.make_entry"
 local entry_display = require "telescope.pickers.entry_display"
 
----@class InputEntry
----@field value InputEntry|table|number|string|boolean|nil
----@field newlines number
----@field key_start number
----@field value_start number
---
----@class Entry
----@field key string
----@field entry InputEntry
---
 ---@param t table
 ---@return Entry[]
 local function get_entries_from_lua_json(t)
@@ -42,14 +45,32 @@ local function get_entries_from_lua_json(t)
     --@type k string
     --@type raw_value InputEntry
     for k, raw_value in pairs(t) do
-        table.insert(keys, {key = k, entry = raw_value})
+        ---@type Entry
+        local entry = {
+            key = k,
+            value = raw_value,
+            position = {
+                line_number = raw_value.newlines,
+                key_start = raw_value.key_start,
+                value_start = raw_value.value_start,
+            }
+        }
+        table.insert(keys, entry)
 
         local v = raw_value.value
 
         if type(v) == "table" then
             local sub_keys = get_entries_from_lua_json(v)
+
             for _, sub_key in ipairs(sub_keys) do
-                table.insert(keys, {key = k .. "." .. sub_key.key, entry = sub_key.entry})
+                ---@type Entry
+                local entry = {
+                    key = k .. "." .. sub_key.key,
+                    value = sub_key,
+                    position = sub_key.position,
+                }
+
+                table.insert(keys, entry)
             end
         end
     end
@@ -114,17 +135,25 @@ local function get_entries_from_lsp_symbols(symbols)
 
         if symbol.kind == 2 then
             local sub_keys = get_entries_from_lsp_symbols(symbol.children)
+
             for _, sub_key in ipairs(sub_keys) do
-                table.insert(keys, {key = key .. "." .. sub_key.key, entry = sub_key.entry})
+                ---@type Entry
+                local entry = {
+                    key = key .. "." .. sub_key.key,
+                    value = sub_key.value,
+                    position = sub_key.position,
+                }
+
+                table.insert(keys, entry)
             end
         end
 
         ---@type Entry
         local entry = {
             key = key,
-            entry = {
-                value = parse_lsp_value(symbol),
-                newlines = symbol.range["end"].line,
+            value = parse_lsp_value(symbol),
+            position = {
+                line_number = symbol.range["end"].line,
                 key_start = symbol.range.start.character,
                 value_start = symbol.selectionRange.start.character,
             }
@@ -255,11 +284,13 @@ return require"telescope".register_extension {
                                 local _, raw_depth = entry.key:gsub("%.", ".")
                                 local depth = (raw_depth or 0) + 1
 
+                                print(vim.inspect(entry))
+
                                 return make_entry.set_default_entry_mt({
                                     value = current_buf,
                                     ordinal = entry.key,
                                     display = function(_)
-                                        local preview, hl_group_key = create_display_preview(entry.entry.value, opts)
+                                        local preview, hl_group_key = create_display_preview(entry.value, opts)
 
                                         local key = opts.subkeys_display == "normal" and entry.key or replace_previous_keys(entry.key, " ")
 
@@ -286,11 +317,11 @@ return require"telescope".register_extension {
 
                                     bufnr = current_buf,
                                     filename = filename,
-                                    lnum = entry.entry.newlines + 1,
+                                    lnum = entry.position.line_number,
                                     col = opts.jump_behavior == "key_start"
-                                            and entry.entry.key_start
+                                            and entry.position.key_start
                                             -- Use length ("#" operator) as vim jumps to the bytes, not characters
-                                            or entry.entry.value_start
+                                            or entry.position.value_start
                                 }, opts)
                             end,
                         },

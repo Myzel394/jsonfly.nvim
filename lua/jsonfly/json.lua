@@ -387,7 +387,7 @@ local function grok_object(self, text, start, options)
       ---- Add start position so we can quickly jump to it
       VALUE[key] = {
           value = new_val,
-          newlines = newlines or 0,
+          line_number = (newlines or 0) + 1,
           key_start = relative_start + 1,
           value_start = get_relative_i(text, i),
       }
@@ -440,7 +440,7 @@ local function grok_array(self, text, start, options)
       -- can't table.insert(VALUE, val) here because it's a no-op if val is nil
       VALUE[VALUE_INDEX] = {
           value = val,
-          newlines = newlines or 0,
+          line_number = (newlines or 0) + 1,
           value_start = relative_start,
           key_start = relative_start,
       }
