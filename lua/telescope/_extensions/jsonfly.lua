@@ -1,3 +1,4 @@
+---- Documentation for jsonfly ----
 --- Type definitions
 ---@class Options
 ---@field key_max_length number - Length for the key column, 0 for no column-like display, Default: 50
@@ -9,6 +10,7 @@
 ---@field highlights Highlights - Highlight groups for different types
 ---@field jump_behavior "key_start"|"value_start" - Behavior for jumping to the location, "key_start" == Jump to the start of the key, "value_start" == Jump to the start of the value, Default: "key_start"
 ---@field subkeys_display "normal"|"waterfall" - Display subkeys in a normal or waterfall style, Default: "normal"
+---@field backend "lua"|"lsp" - Backend to use for parsing JSON, "lua" = Use our own Lua parser to parse the JSON, "lsp" = Use your LSP to parse the JSON (currently only https://github.com/Microsoft/vscode-json-languageservice is supported). If the "lsp" backend is selected but the LSP fails, it will fallback to the "lua" backend, Default: "lsp"
 ---
 ---@class Highlights
 ---@field number string - Highlight group for numbers, Default: "@number.json"
@@ -17,92 +19,16 @@
 ---@field null string - Highlight group for null values, Default: "@constant.builtin.json"
 ---@field other string - Highlight group for other types, Default: "@label.json"
 
+local parsers = require"jsonfly.parsers"
+local json = require"jsonfly.json"
+local utils = require"jsonfly.utils"
+
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
 local pickers = require "telescope.pickers"
-local conf = require("telescope.config").values
+local conf = require"telescope.config".values
 local make_entry = require "telescope.make_entry"
 local entry_display = require "telescope.pickers.entry_display"
-
-local function get_recursive_keys(t)
-    local keys = {}
-
-    for k, raw_value in pairs(t) do
-        table.insert(keys, {key = k, entry = raw_value})
-
-        local v = raw_value.value
-
-        if type(v) == "table" then
-            local sub_keys = get_recursive_keys(v)
-            for _, sub_key in ipairs(sub_keys) do
-                table.insert(keys, {key = k .. "." .. sub_key.key, entry = sub_key.entry})
-            end
-        end
-    end
-
-    return keys
-end
-
-local function truncate_overflow(value, max_length, overflow_marker)
-    if vim.fn.strdisplaywidth(value) > max_length then
-        return value:sub(1, max_length - vim.fn.strdisplaywidth(overflow_marker)) .. overflow_marker
-    end
-
-    return value
-end
-
----@param value any
----@param opts Options
-local function create_display_preview(value, opts)
-    local t = type(value)
-    local conceal
-
-    if opts.conceal == "auto" then
-        conceal = vim.o.conceallevel > 0
-    else
-        conceal = opts.conceal
-    end
-
-    if t == "table" then
-        local preview_table = {}
-
-        for k, v in pairs(value) do
-            table.insert(preview_table, k .. ": " .. create_display_preview(v.value, opts))
-        end
-
-        return "{ " .. table.concat(preview_table, ", ") .. " }", "other"
-    elseif t == "nil" then
-        return "null", "null"
-    elseif t == "number" then
-        return tostring(value), "number"
-    elseif t == "string" then
-        if conceal then
-            return value, "string"
-        else
-            return "\"" .. value .. "\"", "string"
-        end
-    elseif t == "boolean" then
-        return value and "true" or "false", "boolean"
-    end
-end
-
----@param key string
----@param replacement string
----@return string
----Replaces all previous keys with the replacement
----Example: replace_previous_keys("a.b.c", "x") => "xxx.c"
-local function replace_previous_keys(key, replacement)
-    for i = #key, 1, -1 do
-        if key:sub(i, i) == "." then
-            local len = i - 1
-            local before = replacement:rep(len)
-
-            return before .. "." .. key:sub(i + 1)
-        end
-    end
-
-    return key
-end
 
 ---@type Options
 local opts = {
@@ -121,82 +47,117 @@ local opts = {
     },
     jump_behavior = "key_start",
     subkeys_display = "normal",
+    backend = "lsp",
 }
+
+---@param results Entry[]
+---@param buffer number
+local function show_picker(results, buffer)
+    local filename = vim.api.nvim_buf_get_name(buffer)
+
+    local displayer = entry_display.create {
+        separator = " ",
+        items = {
+            { width = 1 },
+            opts.key_exact_length and { width = opts.key_max_length } or { remaining = true },
+            { remaining = true },
+        },
+    }
+
+    pickers.new(opts, {
+        prompt_title = opts.prompt_title,
+        finder = finders.new_table {
+            results = results,
+            ---@param entry Entry
+            entry_maker = function(entry)
+                local _, raw_depth = entry.key:gsub("%.", ".")
+                local depth = (raw_depth or 0) + 1
+
+                return make_entry.set_default_entry_mt({
+                    value = buffer,
+                    ordinal = entry.key,
+                    display = function(_)
+                        local preview, hl_group_key = utils:create_display_preview(entry.value, opts)
+
+                        local key = opts.subkeys_display == "normal" and entry.key or utils:replace_previous_keys(entry.key, " ")
+
+                        print(vim.inspect(entry))
+
+                        return displayer {
+                            { depth, "TelescopeResultsNumber"},
+                            {
+                                utils:truncate_overflow(
+                                    key,
+                                    opts.key_max_length,
+                                    opts.overflow_marker
+                                ),
+                                "@property.json",
+                            },
+                            {
+                                utils:truncate_overflow(
+                                    preview,
+                                    opts.max_length,
+                                    opts.overflow_marker
+                                ),
+                                opts.highlights[hl_group_key] or "TelescopeResultsString",
+                            },
+                        }
+                    end,
+
+                    bufnr = buffer,
+                    filename = filename,
+                    lnum = entry.position.line_number,
+                    col = opts.jump_behavior == "key_start"
+                            and entry.position.key_start
+                            -- Use length ("#" operator) as vim jumps to the bytes, not characters
+                            or entry.position.value_start
+                }, opts)
+            end,
+        },
+        previewer = conf.grep_previewer(opts),
+        sorter = conf.generic_sorter(opts),
+        sorting_strategy = "ascending",
+    }):find()
+end
 
 return require"telescope".register_extension {
     setup = function(extension_config)
         opts = vim.tbl_deep_extend("force", opts, extension_config or {})
     end,
     exports = {
-        jsonfly = function()
+        jsonfly = function(xopts)
             local current_buf = vim.api.nvim_get_current_buf()
-            local filename = vim.api.nvim_buf_get_name(current_buf)
             local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
             local content = table.concat(content_lines, "\n")
 
-            local parsed = json:decode(content)
-            local keys = get_recursive_keys(parsed)
+            function run_lua_parser()
+                local parsed = json:decode(content)
+                local keys = parsers:get_entries_from_lua_json(parsed)
 
-            local displayer = entry_display.create {
-                separator = " ",
-                items = {
-                    { width = 1 },
-                    opts.key_exact_length and { width = opts.key_max_length } or { remaining = true },
-                    { remaining = true },
-                },
-            }
+                show_picker(keys, current_buf)
+            end
 
-            pickers.new(opts, {
-                prompt_title = opts.prompt_title,
-                finder = finders.new_table {
-                    results = keys,
-                    entry_maker = function(entry)
-                        local _, raw_depth = entry.key:gsub("%.", ".")
-                        local depth = (raw_depth or 0) + 1
+            if opts.backend == "lsp" then
+                local params = vim.lsp.util.make_position_params(xopts.winnr)
 
-                        return make_entry.set_default_entry_mt({
-                            value = current_buf,
-                            ordinal = entry.key,
-                            display = function(_)
-                                local preview, hl_group_key = create_display_preview(entry.entry.value, opts)
+                vim.lsp.buf_request(
+                    current_buf,
+                    "textDocument/documentSymbol",
+                    params,
+                    function(error, lsp_response)
+                        if error then
+                            run_lua_parser()
+                            return
+                        end
 
-                                local key = opts.subkeys_display == "normal" and entry.key or replace_previous_keys(entry.key, " ")
+                        local result = parsers:get_entries_from_lsp_symbols(lsp_response)
 
-                                return displayer {
-                                    { depth, "TelescopeResultsNumber"},
-                                    {
-                                         truncate_overflow(
-                                            key,
-                                            opts.key_max_length,
-                                            opts.overflow_marker
-                                        ),
-                                        "@property.json",
-                                    },
-                                    {
-                                        truncate_overflow(
-                                            preview,
-                                            opts.max_length,
-                                            opts.overflow_marker
-                                        ),
-                                        opts.highlights[hl_group_key] or "TelescopeResultsString",
-                                    },
-                                }
-                            end,
-
-                            bufnr = current_buf,
-                            filename = filename,
-                            lnum = entry.entry.newlines + 1,
-                            col = opts.jump_behavior == "key_start"
-                                    and entry.entry.key_start
-                                    -- Use length ("#" operator) as vim jumps to the bytes, not characters
-                                    or entry.entry.value_start
-                        }, opts)
-                    end,
-                },
-                previewer = conf.grep_previewer(opts),
-                sorter = conf.generic_sorter(opts),
-                sorting_strategy = "ascending",
-            }):find()
+                        show_picker(result, current_buf)
+                    end
+                )
+            else
+                run_lua_parser()
+            end
         end
     }
 }
