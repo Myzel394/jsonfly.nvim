@@ -61,7 +61,20 @@ Go to a JSON file and run:
 
 ## Configuration
 
+Edit jsonfly like any other Telescope extension:
+
+```lua
+require"telescope".setup {
+    extensions = {
+        jsonfly = {
+            -- Your configuration here
+        }
+    }
+}
+```
+
 Please see [jsonfly.lua](https://github.com/Myzel394/jsonfly/blob/main/lua/telescope/_extensions/jsonfly.lua) for the default configuration.
+The first comment in the file contains a list of all available options.
 
 ### Example: Vertical layout
 
