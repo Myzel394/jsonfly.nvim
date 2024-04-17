@@ -90,6 +90,7 @@ end
 ---@param result Symbol
 ---@return string|number|table|boolean|nil
 function M:parse_lsp_value(result)
+    -- Object
     if result.kind == 2 then
         local value = {}
 
@@ -98,10 +99,13 @@ function M:parse_lsp_value(result)
         end
 
         return value
+    -- Integer
     elseif result.kind == 16 then
         return tonumber(result.detail)
+    -- String
     elseif result.kind == 15 then
         return result.detail
+    -- Array
     elseif result.kind == 18 then
         local value = {}
 
@@ -110,8 +114,10 @@ function M:parse_lsp_value(result)
         end
 
         return value
+    -- null
     elseif result.kind == 13 then
         return nil
+    -- boolean
     elseif result.kind == 17 then
         return result.detail == "true"
     end
@@ -159,7 +165,7 @@ function M:get_entries_from_lsp_symbols(symbols)
         }
         keys[#keys + 1] = entry
 
-        if symbol.kind == 2 then
+        if symbol.kind == 2 or symbol.kind == 18 then
             local sub_keys = M:get_entries_from_lsp_symbols(symbol.children)
 
             for jindex=1, #sub_keys do
