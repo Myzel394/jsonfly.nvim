@@ -54,7 +54,7 @@ function M:get_entries_from_lua_json(t)
         local raw_value = _raw_value
         ---@type Entry
         local entry = {
-            key = k,
+            key = tostring(k),
             value = get_contents_from_json_value(raw_value),
             position = {
                 line_number = raw_value.line_number,
@@ -151,7 +151,7 @@ function M:get_entries_from_lsp_symbols(symbols)
 
         ---@type Entry
         local entry = {
-            key = key,
+            key = tostring(key),
             value = M:parse_lsp_value(symbol),
             position = {
                 line_number = symbol.range.start.line + 1,
