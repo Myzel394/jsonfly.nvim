@@ -20,8 +20,8 @@
 ---@field other string - Highlight group for other types, Default: "@label.json"
 
 local parsers = require"jsonfly.parsers"
-local json = require"jsonfly.json"
 local utils = require"jsonfly.utils"
+local cache = require"jsonfly.cache"
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
@@ -50,9 +50,9 @@ local opts = {
     backend = "lsp",
 }
 
----@param results Entry[]
+---@param entries Entry[]
 ---@param buffer number
-local function show_picker(results, buffer)
+local function show_picker(entries, buffer)
     local filename = vim.api.nvim_buf_get_name(buffer)
 
     local displayer = entry_display.create {
@@ -75,7 +75,7 @@ local function show_picker(results, buffer)
     pickers.new(opts, {
         prompt_title = opts.prompt_title,
         finder = finders.new_table {
-            results = results,
+            results = entries,
             ---@param entry Entry
             entry_maker = function(entry)
                 local _, raw_depth = entry.key:gsub("%.", ".")
@@ -133,14 +133,25 @@ return require"telescope".register_extension {
     exports = {
         jsonfly = function(xopts)
             local current_buf = vim.api.nvim_get_current_buf()
+
+            local cached_entries = cache:get_cache(current_buf)
+
+            if cached_entries ~= nil then
+                print("Using cached entries")
+                show_picker(cached_entries, current_buf)
+                return
+            end
+
             local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
             local content = table.concat(content_lines, "\n")
 
-            function run_lua_parser()
+            local function run_lua_parser()
                 local parsed = json:decode(content)
-                local keys = parsers:get_entries_from_lua_json(parsed)
+                local entries = parsers:get_entries_from_lua_json(parsed)
 
-                show_picker(keys, current_buf)
+                cache:cache_buffer(current_buf, entries)
+
+                show_picker(entries, current_buf)
             end
 
             if opts.backend == "lsp" then
@@ -156,9 +167,10 @@ return require"telescope".register_extension {
                             return
                         end
 
-                        local result = parsers:get_entries_from_lsp_symbols(lsp_response)
+                        local entries = parsers:get_entries_from_lsp_symbols(lsp_response)
+                        cache:cache_buffer(current_buf, entries)
 
-                        show_picker(result, current_buf)
+                        show_picker(entries, current_buf)
                     end
                 )
             else
