@@ -65,6 +65,10 @@ Go to a JSON file and run:
 
 ```lua
 :Telescope jsonfly
+
+## See also
+
+* [jsonpath.nvim](https://github.com/phelipetls/jsonpath.nvim) - Copy JSON paths to your clipboard
 ```
 
 ## Configuration
