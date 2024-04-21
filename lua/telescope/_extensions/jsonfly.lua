@@ -143,7 +143,7 @@ return require"telescope".register_extension {
                 show_picker(keys, current_buf)
             end
 
-            if opts.backend == "lsp" then
+            if opts.backend == "lsp" and vim.bo.filetype == 'json' then
                 local params = vim.lsp.util.make_position_params(xopts.winnr)
 
                 vim.lsp.buf_request(
