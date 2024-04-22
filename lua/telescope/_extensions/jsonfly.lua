@@ -11,6 +11,7 @@
 ---@field jump_behavior "key_start"|"value_start" - Behavior for jumping to the location, "key_start" == Jump to the start of the key, "value_start" == Jump to the start of the value, Default: "key_start"
 ---@field subkeys_display "normal"|"waterfall" - Display subkeys in a normal or waterfall style, Default: "normal"
 ---@field backend "lua"|"lsp" - Backend to use for parsing JSON, "lua" = Use our own Lua parser to parse the JSON, "lsp" = Use your LSP to parse the JSON (currently only https://github.com/Microsoft/vscode-json-languageservice is supported). If the "lsp" backend is selected but the LSP fails, it will fallback to the "lua" backend, Default: "lsp"
+---@field use_cache number - Whether to use cache the parsed JSON. The cache will be activated if the number of lines is greater or equal to this value, By default, the cache is activate when the file if 1000 lines or more; `0` to disable the cache, Default: 500
 ---
 ---@class Highlights
 ---@field number string - Highlight group for numbers, Default: "@number.json"
@@ -48,6 +49,7 @@ local opts = {
     jump_behavior = "key_start",
     subkeys_display = "normal",
     backend = "lsp",
+    use_cache = 500,
 }
 
 ---@param entries Entry[]
@@ -141,16 +143,21 @@ return require"telescope".register_extension {
                 return
             end
 
-            cache:register_listeners(current_buf)
-
             local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
             local content = table.concat(content_lines, "\n")
+            local allow_cache = opts.use_cache > 0 and #content_lines >= opts.use_cache
+
+            if allow_cache then
+                cache:register_listeners(current_buf)
+            end
 
             local function run_lua_parser()
                 local parsed = json:decode(content)
                 local entries = parsers:get_entries_from_lua_json(parsed)
 
-                cache:cache_buffer(current_buf, entries)
+                if allow_cache then
+                    cache:cache_buffer(current_buf, entries)
+                end
 
                 show_picker(entries, current_buf)
             end
@@ -169,7 +176,10 @@ return require"telescope".register_extension {
                         end
 
                         local entries = parsers:get_entries_from_lsp_symbols(lsp_response)
-                        cache:cache_buffer(current_buf, entries)
+
+                        if allow_cache then
+                            cache:cache_buffer(current_buf, entries)
+                        end
 
                         show_picker(entries, current_buf)
                     end
