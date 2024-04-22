@@ -137,10 +137,11 @@ return require"telescope".register_extension {
             local cached_entries = cache:get_cache(current_buf)
 
             if cached_entries ~= nil then
-                print("Using cached entries")
                 show_picker(cached_entries, current_buf)
                 return
             end
+
+            cache:register_listeners(current_buf)
 
             local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
             local content = table.concat(content_lines, "\n")
