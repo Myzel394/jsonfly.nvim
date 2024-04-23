@@ -13,6 +13,7 @@ It's completely customizable and even supports highlighting of the values.
 * 🔍 Search for deeply nested keys - `expo.android.imageAsset.0.uri`
 * 🎨 See values with their correct syntax highlighting (numbers, strings, booleans, null; configurable)
 * 💻 Use your LSP or the built-in JSON parser
+* 🗑 Values automatically cached for faster navigation
 * 🫣 Automatic concealment based on your configuration
 * 📐 Everything completely customizable!
 
