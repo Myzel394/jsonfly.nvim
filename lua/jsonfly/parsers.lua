@@ -40,7 +40,7 @@ local function get_contents_from_json_value(entry)
     end
 end
 
----@param t table|nil|string|number
+---@param t table|nil|string|number|boolean
 ---@return Entry[]
 function M:get_entries_from_lua_json(t)
     if PRIMITIVE_TYPES[type(t)] or t == nil then

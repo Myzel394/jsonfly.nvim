@@ -11,6 +11,7 @@
 ---@field jump_behavior "key_start"|"value_start" - Behavior for jumping to the location, "key_start" == Jump to the start of the key, "value_start" == Jump to the start of the value, Default: "key_start"
 ---@field subkeys_display "normal"|"waterfall" - Display subkeys in a normal or waterfall style, Default: "normal"
 ---@field backend "lua"|"lsp" - Backend to use for parsing JSON, "lua" = Use our own Lua parser to parse the JSON, "lsp" = Use your LSP to parse the JSON (currently only https://github.com/Microsoft/vscode-json-languageservice is supported). If the "lsp" backend is selected but the LSP fails, it will fallback to the "lua" backend, Default: "lsp"
+---@field use_cache number - Whether to use cache the parsed JSON. The cache will be activated if the number of lines is greater or equal to this value, By default, the cache is activate when the file if 1000 lines or more; `0` to disable the cache, Default: 500
 ---
 ---@class Highlights
 ---@field number string - Highlight group for numbers, Default: "@number.json"
@@ -20,8 +21,8 @@
 ---@field other string - Highlight group for other types, Default: "@label.json"
 
 local parsers = require"jsonfly.parsers"
-local json = require"jsonfly.json"
 local utils = require"jsonfly.utils"
+local cache = require"jsonfly.cache"
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
@@ -48,11 +49,12 @@ local opts = {
     jump_behavior = "key_start",
     subkeys_display = "normal",
     backend = "lsp",
+    use_cache = 500,
 }
 
----@param results Entry[]
+---@param entries Entry[]
 ---@param buffer number
-local function show_picker(results, buffer)
+local function show_picker(entries, buffer)
     local filename = vim.api.nvim_buf_get_name(buffer)
 
     local displayer = entry_display.create {
@@ -75,7 +77,7 @@ local function show_picker(results, buffer)
     pickers.new(opts, {
         prompt_title = opts.prompt_title,
         finder = finders.new_table {
-            results = results,
+            results = entries,
             ---@param entry Entry
             entry_maker = function(entry)
                 local _, raw_depth = entry.key:gsub("%.", ".")
@@ -133,14 +135,31 @@ return require"telescope".register_extension {
     exports = {
         jsonfly = function(xopts)
             local current_buf = vim.api.nvim_get_current_buf()
+
+            local cached_entries = cache:get_cache(current_buf)
+
+            if cached_entries ~= nil then
+                show_picker(cached_entries, current_buf)
+                return
+            end
+
             local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
             local content = table.concat(content_lines, "\n")
+            local allow_cache = opts.use_cache > 0 and #content_lines >= opts.use_cache
 
-            function run_lua_parser()
+            if allow_cache then
+                cache:register_listeners(current_buf)
+            end
+
+            local function run_lua_parser()
                 local parsed = json:decode(content)
-                local keys = parsers:get_entries_from_lua_json(parsed)
+                local entries = parsers:get_entries_from_lua_json(parsed)
 
-                show_picker(keys, current_buf)
+                if allow_cache then
+                    cache:cache_buffer(current_buf, entries)
+                end
+
+                show_picker(entries, current_buf)
             end
 
             if opts.backend == "lsp" then
@@ -156,9 +175,13 @@ return require"telescope".register_extension {
                             return
                         end
 
-                        local result = parsers:get_entries_from_lsp_symbols(lsp_response)
+                        local entries = parsers:get_entries_from_lsp_symbols(lsp_response)
 
-                        show_picker(result, current_buf)
+                        if allow_cache then
+                            cache:cache_buffer(current_buf, entries)
+                        end
+
+                        show_picker(entries, current_buf)
                     end
                 )
             else
