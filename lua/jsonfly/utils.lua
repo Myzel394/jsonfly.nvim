@@ -1,3 +1,7 @@
+---@class KeyDescription
+---@field key string
+---@field type "object"|"array"|"string"
+
 local M = {}
 
 function M:truncate_overflow(value, max_length, overflow_marker)
@@ -52,6 +56,63 @@ function M:replace_previous_keys(key, replacement)
     end
 
     return key
+end
+
+---@param text string
+---@param char string
+---@return string[]
+function M:split_by_char(text, char)
+    local parts = {}
+    local current = ""
+
+    for i = 1, #text do
+        local c = text:sub(i, i)
+
+        if c == char then
+            parts[#parts + 1] = current
+            current = ""
+        else
+            current = current .. c
+        end
+    end
+
+    parts[#parts + 1] = current
+
+    return parts
+end
+
+---@param text string
+---@return KeyDescription[]
+function M:extract_key_description(text)
+    local keys = {}
+
+    local splitted = M:split_by_char(text, ".")
+    for index=1, #splitted do
+        local token = splitted[index]
+
+        if string.sub(token, 1, 1) == "[" then
+            keys[#keys + 1] = {
+                key = tonumber(string.sub(token, 2, -2)),
+                type = "array",
+            }
+        else
+            keys[#keys + 1] = {
+                key = token,
+                type = "object",
+            }
+        end
+    end
+
+    if #keys == 0 then
+        return {
+            {
+                key = text,
+                type = "string",
+            }
+        }
+    end
+
+    return keys
 end
 
 return M
