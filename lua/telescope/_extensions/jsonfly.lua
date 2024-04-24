@@ -79,9 +79,10 @@ end
 ---@return [Entry, string[]]
 local function find_remaining_keys(entries, keys)
     local start_index = 1
-    local end_index = #keys
 
     local existing_keys_depth = nil
+
+    local potential_keys_indexes = {}
 
     for kk=1, #keys do
         local found_result = false
@@ -91,20 +92,14 @@ local function find_remaining_keys(entries, keys)
             if check_key_equal(entries[ii], key, kk) then
                 found_result = true
                 start_index = ii
-                break
-            end
-        end
-
-        for ii=start_index + 1, #entries do
-            if not check_key_equal(entries[ii], key, kk) then
-                found_result = true
-                end_index = ii - 1
-                break
+                potential_keys_indexes[#potential_keys_indexes + 1] = ii
+                -- Not sure if this can be used for optimization
+                -- break
             end
         end
 
         if not found_result then
-            existing_keys_depth = kk - 1
+            existing_keys_depth = kk
             break
         end
     end
@@ -113,10 +108,29 @@ local function find_remaining_keys(entries, keys)
         existing_keys_depth = #keys
     end
 
-    local last_entry = entries[end_index]
+    local existing_keys = table.slice(keys, 1, existing_keys_depth - 1)
     local remaining_keys = table.slice(keys, existing_keys_depth, #keys)
+    local existing_key_str = ""
 
-    return { last_entry, remaining_keys }
+    for ii=1, #existing_keys do
+        existing_key_str = existing_key_str .. existing_keys[ii].key
+        if ii < #existing_keys then
+            existing_key_str = existing_key_str .. "."
+        end
+    end
+
+    -- Find key that matches perfectly
+    for ii=1, #potential_keys_indexes do
+        local index = potential_keys_indexes[ii]
+        local entry = entries[index]
+
+        if entry.key == existing_key_str then
+            return {entry, remaining_keys}
+        end
+    end
+
+    -- Weird case, return the first one in hope that it's correct
+    return {potential_keys_indexes[1], remaining_keys}
 end
 
 ---@param keys KeyDescription
@@ -124,13 +138,18 @@ end
 local function write_keys(keys, index)
     local lines = {}
 
-    if index >= #keys then
-        return {}
+    if index == #keys then
+        return { "\"" .. keys[index].key .. "\": \"\""}
     end
 
-    lines[#lines + 1] = ","
+    local insertions = write_keys(keys, index + 1)
+
     lines[#lines + 1] = "\"" .. keys[index].key .. "\": {"
-    lines[#lines + 1] = write_keys(keys, index + 1)
+
+    for ii=1, #insertions do
+        lines[#lines + 1] = insertions[ii]
+    end
+
     lines[#lines + 1] = "}"
 
     return lines
@@ -140,13 +159,17 @@ end
 ---@param keys KeyDescription[]
 ---@param buffer number
 local function insert_new_key(entries, keys, buffer)
+    -- Close current buffer
+    vim.cmd [[quit!]]
+
     local _result = find_remaining_keys(entries, keys)
-    local last_entry = _result[1]
+    local entry = _result[1]
     local remaining_keys = _result[2]
 
     local writes = write_keys(remaining_keys, 1)
+    vim.api.nvim_buf_set_lines(buffer, start_line, start_line, false, writes)
 
-    print(vim.inspect(last_entry))
+    print(vim.inspect(entry))
     print(vim.inspect(remaining_keys))
     print(vim.inspect(writes))
 
