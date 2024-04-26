@@ -151,29 +151,25 @@ function M:insert_new_key(entries, keys, buffer)
         end
     end
 
-    vim.api.nvim_win_set_cursor(0, {entry.position.line_number, entry.position.value_start})
     -- Hacky way to jump to end of object
+    vim.api.nvim_win_set_cursor(0, {entry.position.line_number, entry.position.value_start})
     vim.cmd [[execute "normal %"]]
+
     local start_line = vim.api.nvim_win_get_cursor(0)[1] - 1
 
-    -- Add comma to previous line
+    -- Add comma to previous JSON entry
     add_comma(buffer, start_line)
-    --
+
     -- Insert new lines
     vim.api.nvim_buf_set_lines(buffer, start_line, start_line, false, writes)
-    --
-    -- -- -- Format lines
+
+    -- Format lines
     vim.api.nvim_win_set_cursor(0, {start_line, 1})
     vim.cmd('execute "normal =' .. #writes .. 'j"')
-    --
-    -- -- Jump to the key
+
+    -- Jump to the key
     vim.api.nvim_win_set_cursor(0, {start_line + math.ceil(#writes / 2), 0})
-    vim.cmd [[execute "normal $a"]] 
-
-    -- vim.schedule(function()
-    --     vim.cmd [[%]]
-    -- end)
-
+    vim.cmd [[execute "normal $a"]]
 end
 
 return M;
