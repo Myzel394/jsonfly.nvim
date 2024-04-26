@@ -99,10 +99,10 @@ local function add_comma(buffer, insertion_line)
             return
         end
 
-        for jj=#previous_lines, 0, -1 do
+        for jj=#previous_lines, 1, -1 do
             local line = previous_lines[jj]
 
-            for char_index=#line, 0, -1 do
+            for char_index=#line, 1, -1 do
                 local char = line:sub(char_index, char_index)
 
                 if char ~= " " and char ~= "\t" and char ~= "\n" and char ~= "\r" then
@@ -110,9 +110,16 @@ local function add_comma(buffer, insertion_line)
                         return
                     end
 
-
                     -- Insert comma at position
-                    vim.api.nvim_buf_set_text(buffer, ii - 1, char_index, ii - 1, char_index, {","})
+                    local line_number = ii - (BUFFER_SIZE - jj)
+                    vim.api.nvim_buf_set_text(
+                        buffer,
+                        line_number - 1,
+                        char_index,
+                        line_number - 1,
+                        char_index,
+                        {","}
+                    )
                     return
                 end
             end
