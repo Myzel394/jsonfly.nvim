@@ -23,6 +23,7 @@
 local parsers = require"jsonfly.parsers"
 local utils = require"jsonfly.utils"
 local cache = require"jsonfly.cache"
+local insert = require"jsonfly.insert"
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
@@ -53,141 +54,6 @@ local opts = {
     backend = "lsp",
     use_cache = 500,
 }
-
--- https://stackoverflow.com/a/24823383/9878135
-function table.slice(tbl, first, last, step)
-  local sliced = {}
-
-  for i = first or 1, last or #tbl, step or 1 do
-    sliced[#sliced+1] = tbl[i]
-  end
-
-  return sliced
-end
-
----@param entry Entry
----@param key string
----@param index number
-local function check_key_equal(entry, key, index)
-    local splitted = utils:split_by_char(entry.key, ".")
-
-    return splitted[index] == key
-end
-
----@param entries Entry[]
----@param keys KeyDescription[]
----@return [Entry, string[]]
-local function find_remaining_keys(entries, keys)
-    local start_index = 1
-
-    local existing_keys_depth = nil
-
-    local potential_keys_indexes = {}
-
-    for kk=1, #keys do
-        local found_result = false
-        local key = keys[kk].key
-
-        for ii=start_index, #entries do
-            if check_key_equal(entries[ii], key, kk) then
-                found_result = true
-                start_index = ii
-                potential_keys_indexes[#potential_keys_indexes + 1] = ii
-                -- Not sure if this can be used for optimization
-                -- break
-            end
-        end
-
-        if not found_result then
-            existing_keys_depth = kk
-            break
-        end
-    end
-
-    if existing_keys_depth == nil then
-        existing_keys_depth = #keys
-    end
-
-    local existing_keys = table.slice(keys, 1, existing_keys_depth - 1)
-    local remaining_keys = table.slice(keys, existing_keys_depth, #keys)
-    local existing_key_str = ""
-
-    for ii=1, #existing_keys do
-        existing_key_str = existing_key_str .. existing_keys[ii].key
-        if ii < #existing_keys then
-            existing_key_str = existing_key_str .. "."
-        end
-    end
-
-    -- Find key that matches perfectly
-    for ii=1, #potential_keys_indexes do
-        local index = potential_keys_indexes[ii]
-        local entry = entries[index]
-
-        if entry.key == existing_key_str then
-            return {entry, remaining_keys}
-        end
-    end
-
-    -- Weird case, return the first one in hope that it's correct
-    return {potential_keys_indexes[1], remaining_keys}
-end
-
----@param keys KeyDescription
----@param index number - Index of the key
-local function write_keys(keys, index)
-    local lines = {}
-
-    if index == #keys then
-        return { "\"" .. keys[index].key .. "\": \"\""}
-    end
-
-    local insertions = write_keys(keys, index + 1)
-
-    lines[#lines + 1] = "\"" .. keys[index].key .. "\": {"
-
-    for ii=1, #insertions do
-        lines[#lines + 1] = insertions[ii]
-    end
-
-    lines[#lines + 1] = "}"
-
-    return lines
-end
-
----@param entries Entry[]
----@param keys KeyDescription[]
----@param buffer number
-local function insert_new_key(entries, keys, buffer)
-    -- Close current buffer
-    vim.cmd [[quit!]]
-
-    local _result = find_remaining_keys(entries, keys)
-    local entry = _result[1]
-    local remaining_keys = _result[2]
-
-    local writes = write_keys(remaining_keys, 1)
-    vim.api.nvim_buf_set_lines(buffer, start_line, start_line, false, writes)
-
-    print(vim.inspect(entry))
-    print(vim.inspect(remaining_keys))
-    print(vim.inspect(writes))
-
-    -- for parts=#keys, 1, -1 do
-    --     ---@type Entries[]
-    --     local sub_keys = table.slice(keys, 1, parts)
-    --     local path = ""
-    --     
-    --     for ii=1, #sub_keys do
-    --         path = path .. sub_keys[ii].key
-    --         if ii < #sub_keys then
-    --             path = path .. "."
-    --         end
-    --     end
-    --
-    --     print(path)
-    -- end
-end
 
 ---@param entries Entry[]
 ---@param buffer number
@@ -220,7 +86,7 @@ local function show_picker(entries, buffer)
 
                   local key_descriptor = utils:extract_key_description(input)
 
-                  insert_new_key(entries, key_descriptor, buffer)
+                  insert:insert_new_key(entries, key_descriptor, buffer)
             end)
 
             return true
