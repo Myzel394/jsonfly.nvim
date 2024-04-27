@@ -19,14 +19,15 @@ function table.slice(tbl, first, last, step)
 end
 
 ---@param line string
+---@param also_match_end_bracket boolean - Whether to also match only a closing bracket
 ---@return boolean - Whether the line contains an empty JSON object
-local function line_contains_empty_json(line)
+local function line_contains_empty_json(line, also_match_end_bracket)
     -- Starting and ending on same line
     return string.match(line, ".*[%{%[]%s*[%]%]]%s*,?*%s*")
         -- Opening bracket on line
         or string.match(line, ".*[%{%[]%s*")
         -- Closing bracket on line
-        or string.match(line, ".*.*[%]%}]%s*,?%s*")
+        or (also_match_end_bracket and string.match(line, ".*.*[%]%}]%s*,?%s*"))
 end
 
 ---@param entry Entry
@@ -87,9 +88,9 @@ local function write_keys(keys, index, lines)
         return
     end
 
-    if key.type == "object_wrapper" then
+    if key.type == "object_wrapper" and #lines > 0 then
         local previous_line = lines[#lines] or ""
-        if line_contains_empty_json(previous_line) then
+        if line_contains_empty_json(previous_line, true) then
             lines[#lines + 1] = "{"
         else
             lines[#lines] = previous_line .. " {"
@@ -105,7 +106,7 @@ local function write_keys(keys, index, lines)
     elseif key.type == "array_wrapper" then
         local previous_line = lines[#lines] or ""
         -- Starting and ending on same line
-        if line_contains_empty_json(previous_line) then
+        if line_contains_empty_json(previous_line, true) then
             lines[#lines + 1] = "["
         else
             lines[#lines] = previous_line .. " ["
@@ -169,7 +170,7 @@ end
 local function expand_empty_object(buffer, line_number)
     local line = vim.api.nvim_buf_get_lines(buffer, line_number, line_number + 1, false)[1] or ""
 
-    if line_contains_empty_json(line) then
+    if line_contains_empty_json(line, false) then
         vim.api.nvim_buf_set_lines(
             buffer,
             line_number,
