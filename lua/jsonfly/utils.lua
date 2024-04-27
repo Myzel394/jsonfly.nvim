@@ -142,7 +142,19 @@ function M:extract_key_description(text)
     while index <= #splitted do
         local token = splitted[index]
 
-        if string.sub(token, 1, 1) == "[" then
+        -- Escape
+        if string.sub(token, 1, 1) == "\\" then
+            token = token:sub(2)
+
+            keys[#keys + 1] = {
+                type = "object_wrapper",
+            }
+            keys[#keys + 1] = {
+                key = token,
+                type = "key",
+            }
+        -- Array
+        elseif string.match(token, "%[%d+%]") then
             local array_index = tonumber(string.sub(token, 2, -2))
 
             keys[#keys + 1] = {
@@ -152,6 +164,18 @@ function M:extract_key_description(text)
                 key = array_index,
                 type = "array_index",
             }
+        -- Array
+        elseif string.match(token, "%d+") then
+            local array_index = tonumber(token)
+
+            keys[#keys + 1] = {
+                type = "array_wrapper",
+            }
+            keys[#keys + 1] = {
+                key = array_index,
+                type = "array_index",
+            }
+        -- Object
         else
             keys[#keys + 1] = {
                 type = "object_wrapper",
