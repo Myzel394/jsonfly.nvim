@@ -23,11 +23,11 @@ end
 ---@return boolean - Whether the line contains an empty JSON object
 local function line_contains_empty_json(line, also_match_end_bracket)
     -- Starting and ending on same line
-    return string.match(line, ".*[%{%[]%s*[%]%]]%s*,?*%s*")
+    return string.match(line, ".*[%{%[]%s*[%}%]]%s*,?*%s*")
         -- Opening bracket on line
         or string.match(line, ".*[%{%[]%s*")
         -- Closing bracket on line
-        or (also_match_end_bracket and string.match(line, ".*.*[%]%}]%s*,?%s*"))
+        or (also_match_end_bracket and string.match(line, ".*.*[%}%]]%s*,?%s*"))
 end
 
 ---@param entry Entry
@@ -88,9 +88,9 @@ local function write_keys(keys, index, lines)
         return
     end
 
-    if key.type == "object_wrapper" and #lines > 0 then
+    if key.type == "object_wrapper" then
         local previous_line = lines[#lines] or ""
-        if line_contains_empty_json(previous_line, true) then
+        if line_contains_empty_json(previous_line, true) or #lines == 0 then
             lines[#lines + 1] = "{"
         else
             lines[#lines] = previous_line .. " {"
@@ -106,7 +106,7 @@ local function write_keys(keys, index, lines)
     elseif key.type == "array_wrapper" then
         local previous_line = lines[#lines] or ""
         -- Starting and ending on same line
-        if line_contains_empty_json(previous_line, true) then
+        if line_contains_empty_json(previous_line, true) or #lines == 0 then
             lines[#lines + 1] = "["
         else
             lines[#lines] = previous_line .. " ["
@@ -299,8 +299,6 @@ function M:insert_new_key(entries, keys, buffer)
 
         normalize_array_indexes(entries, starting_keys, remaining_keys[1])
     end
-
-    -- normalize_array_indexes(remaining_keys)
 
     local _writes = {}
     write_keys(remaining_keys, 1, _writes)
