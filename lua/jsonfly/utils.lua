@@ -1,6 +1,6 @@
 ---@class KeyDescription
 ---@field key string
----@field type "object"|"array"|"array_index"
+---@field type "object_wrapper"|"key"|"array_wrapper"|"array_index"
 
 -- Examples:
 --{
@@ -146,7 +146,7 @@ function M:extract_key_description(text)
             local array_index = tonumber(string.sub(token, 2, -2))
 
             keys[#keys + 1] = {
-                type = "array",
+                type = "array_wrapper",
             }
             keys[#keys + 1] = {
                 key = array_index,
@@ -154,8 +154,11 @@ function M:extract_key_description(text)
             }
         else
             keys[#keys + 1] = {
+                type = "object_wrapper",
+            }
+            keys[#keys + 1] = {
                 key = token,
-                type = "object",
+                type = "key",
             }
         end
 
@@ -166,7 +169,7 @@ function M:extract_key_description(text)
         return {
             {
                 key = text,
-                type = "object",
+                type = "key",
             }
         }
     end

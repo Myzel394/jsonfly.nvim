@@ -1,5 +1,9 @@
 local utils = require"jsonfly.utils"
 
+-- This string will be used to position the cursor properly.
+-- Once everything is set, the cursor searches for this string and jumps to it.
+-- After that, it will be removed immediately.
+local CURSOR_SEARCH_HELPER = "_jsonFfFfFfLyY0904857CursorHelperRrRrRrR"
 
 local M = {};
 
@@ -26,14 +30,14 @@ end
 ---Find the entry in `entries` with the most matching keys at the beginning based on the `keys`.
 ---Returns the index of the entry
 ---@param entries Entry[]
----@param keys KeyDescription[]
+---@param keys string[]
 ---@return number|nil
 local function find_best_fitting_entry(entries, keys)
     local entry_index
     local current_indexes = {1, #entries}
 
     for kk=1, #keys do
-        local key = keys[kk].key
+        local key = keys[kk]
 
         local start_index = current_indexes[1]
         local end_index = current_indexes[2]
@@ -65,26 +69,38 @@ end
 ---@param index number - Index of the key
 local function write_keys(keys, index)
     local lines = {}
+    local key = keys[index]
 
     if index == #keys then
         return {
-            { "\"" .. keys[index].key .. "\": \"\""},
+            { "\"" .. key.key .. "\": \"" .. CURSOR_SEARCH_HELPER .. "\""},
             true
         }
     end
 
     local insertions = write_keys(keys, index + 1)
-    local key = keys[index]
 
-    if key.type == "object" then
-        lines[#lines + 1] = "\"" .. key.key .. "\": {"
+    if key.type == "object_wrapper" then
+        lines[#lines + 1] = "{"
 
         for ii=1, #insertions do
             lines[#lines + 1] = insertions[ii]
         end
 
         lines[#lines + 1] = "}"
-    elseif key.type == "array" then
+    elseif key.type == "key" then
+        lines[#lines + 1] = "\"" .. key.key .. "\":"
+
+        for ii=1, #insertions do
+            lines[#lines + 1] = insertions[ii]
+        end
+    elseif key.type == "array_key" then
+        lines[#lines + 1] = "\"" .. key.key .. "\":"
+
+        for ii=1, #insertions do
+            lines[#lines + 1] = insertions[ii]
+        end
+    elseif key.type == "array_wrapper" then
         lines[#lines + 1] = "["
 
         for ii=1, #insertions do
@@ -94,20 +110,15 @@ local function write_keys(keys, index)
         lines[#lines + 1] = "]"
     elseif key.type == "array_index" then
         local amount = tonumber(key.key)
-
         -- Write previous empty array objects
         for _=1, amount do
             lines[#lines + 1] = "{},"
         end
 
         -- Write key
-        lines[#lines + 1] = "{"
-
         for ii=1, #insertions do
             lines[#lines + 1] = insertions[ii]
         end
-
-        lines[#lines + 1] = "}"
     end
 
     return lines
@@ -154,17 +165,70 @@ local function add_comma(buffer, insertion_line)
     end
 end
 
+---@param buffer number
+function M:jump_to_cursor_helper(buffer)
+    vim.fn.search(CURSOR_SEARCH_HELPER)
+
+    -- Remove cursor helper
+    local position = vim.api.nvim_win_get_cursor(0)
+    vim.api.nvim_buf_set_text(
+        buffer,
+        position[1] - 1,
+        position[2],
+        position[1] - 1,
+        position[2] + #CURSOR_SEARCH_HELPER,
+        {""}
+    )
+
+    -- -- Go into insert mode
+    vim.cmd [[execute "normal a"]]
+end
+
+---@param keys KeyDescription[]
+---@param input_key_depth number
+local function get_key_descriptor_index(keys, input_key_depth)
+    local depth = 0
+    local index = 0
+
+    for ii=1, #keys do
+        if keys[ii].type == "key" or keys[ii].type == "array_key" or keys[ii].type == "array_index" then
+            depth = depth + 1
+        end
+
+        if depth >= input_key_depth then
+            print(vim.inspect(ii))
+            index = ii
+            break
+        end
+    end
+
+    return index
+end
+
 ---@param entries Entry[]
 ---@param keys KeyDescription[]
 ---@param buffer number
 function M:insert_new_key(entries, keys, buffer)
     -- Close current buffer
     vim.cmd [[quit!]]
+    
+    local input_key = {}
 
-    local entry_index = find_best_fitting_entry(entries, keys) or 0
+    for ii=1, #keys do
+        if keys[ii].type == "key" then
+            input_key[#input_key+1] = keys[ii].key
+        elseif keys[ii].type == "array_index" then
+            input_key[#input_key+1] = keys[ii].key
+        end
+    end
+
+    print(vim.inspect(input_key))
+
+    local entry_index = find_best_fitting_entry(entries, input_key) or 0
     local entry = entries[entry_index]
-    local existing_keys_depth = #utils:split_by_char(entry.key, ".") + 1
-    local remaining_keys = table.slice(keys, existing_keys_depth, #keys)
+    local existing_input_keys_depth = #utils:split_by_char(entry.key, ".") + 1
+    local existing_keys_index = get_key_descriptor_index(keys, existing_input_keys_depth)
+    local remaining_keys = table.slice(keys, existing_keys_index, #keys)
 
     local _writes = write_keys(remaining_keys, 1)
     local writes = {}
@@ -177,8 +241,6 @@ function M:insert_new_key(entries, keys, buffer)
             writes[#writes + 1] = _writes[ii]
         end
     end
-
-    print(vim.inspect(remaining_keys))
 
     -- Hacky way to jump to end of object
     vim.api.nvim_win_set_cursor(0, {entry.position.line_number, entry.position.value_start})
@@ -196,9 +258,7 @@ function M:insert_new_key(entries, keys, buffer)
     vim.api.nvim_win_set_cursor(0, {start_line, 1})
     vim.cmd('execute "normal =' .. #writes .. 'j"')
 
-    -- Jump to the key
-    vim.api.nvim_win_set_cursor(0, {start_line + math.ceil(#writes / 2), 0})
-    vim.cmd [[execute "normal $a"]]
+    M:jump_to_cursor_helper(buffer)
 end
 
 return M;
