@@ -74,14 +74,41 @@ local function write_keys(keys, index)
     end
 
     local insertions = write_keys(keys, index + 1)
+    local key = keys[index]
 
-    lines[#lines + 1] = "\"" .. keys[index].key .. "\": {"
+    if key.type == "object" then
+        lines[#lines + 1] = "\"" .. key.key .. "\": {"
 
-    for ii=1, #insertions do
-        lines[#lines + 1] = insertions[ii]
+        for ii=1, #insertions do
+            lines[#lines + 1] = insertions[ii]
+        end
+
+        lines[#lines + 1] = "}"
+    elseif key.type == "array" then
+        lines[#lines + 1] = "["
+
+        for ii=1, #insertions do
+            lines[#lines + 1] = insertions[ii]
+        end
+
+        lines[#lines + 1] = "]"
+    elseif key.type == "array_index" then
+        local amount = tonumber(key.key)
+
+        -- Write previous empty array objects
+        for _=1, amount do
+            lines[#lines + 1] = "{},"
+        end
+
+        -- Write key
+        lines[#lines + 1] = "{"
+
+        for ii=1, #insertions do
+            lines[#lines + 1] = insertions[ii]
+        end
+
+        lines[#lines + 1] = "}"
     end
-
-    lines[#lines + 1] = "}"
 
     return lines
 end
@@ -150,6 +177,8 @@ function M:insert_new_key(entries, keys, buffer)
             writes[#writes + 1] = _writes[ii]
         end
     end
+
+    print(vim.inspect(remaining_keys))
 
     -- Hacky way to jump to end of object
     vim.api.nvim_win_set_cursor(0, {entry.position.line_number, entry.position.value_start})

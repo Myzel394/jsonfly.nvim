@@ -1,6 +1,55 @@
 ---@class KeyDescription
 ---@field key string
----@field type "object"|"array"|"string"
+---@field type "object"|"array"|"array_index"
+
+-- Examples:
+--{
+--  hello: [
+--            {
+--              test: "abc"
+--            }
+--         ]
+--}
+-- hello.[0].test
+-- { key = "hello", type = "object" }
+-- { type = "array" }
+-- { type = "array_index", key = 0 }
+-- { key = "test", type = "object" }
+--
+--{
+--  hello: [
+--           [
+--             {
+--               test: "abc"
+--             }
+--           ]
+--         ]
+--}
+-- hello.[0].[0].test
+-- { key = "hello", type = "object" }
+-- { type = "array" }
+-- { type = "array_index", key = 0 }
+-- { type = "array" }
+-- { type = "array_index", key = 0 }
+-- { key = "test", type = "object" }
+--
+--{
+--  hello: [
+--           {},
+--           [
+--             {
+--               test: "abc"
+--             }
+--           ]
+--         ]
+--}
+-- hello.[1].[0].test
+-- { key = "hello", type = "object" }
+-- { type = "array" }
+-- { type = "array_index", key = 1 }
+-- { type = "array" }
+-- { type = "array_index", key = 0 }
+-- { key = "test", type = "object" }
 
 local M = {}
 
@@ -87,13 +136,21 @@ function M:extract_key_description(text)
     local keys = {}
 
     local splitted = M:split_by_char(text, ".")
-    for index=1, #splitted do
+
+    local index = 1
+
+    while index <= #splitted do
         local token = splitted[index]
 
         if string.sub(token, 1, 1) == "[" then
+            local array_index = tonumber(string.sub(token, 2, -2))
+
             keys[#keys + 1] = {
-                key = tonumber(string.sub(token, 2, -2)),
                 type = "array",
+            }
+            keys[#keys + 1] = {
+                key = array_index,
+                type = "array_index",
             }
         else
             keys[#keys + 1] = {
@@ -101,13 +158,15 @@ function M:extract_key_description(text)
                 type = "object",
             }
         end
+
+        index = index + 1
     end
 
     if #keys == 0 then
         return {
             {
                 key = text,
-                type = "string",
+                type = "object",
             }
         }
     end
