@@ -1,0 +1,21 @@
+name: Run tests
+
+on:
+  pull_request:
+
+jobs:
+  debug-builds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+
+      - name: Install Lua
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.4.6"
+
+      - name: Run tests
+        run: lua -v ./tests/$(ls ./tests)
+
