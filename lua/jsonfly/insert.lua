@@ -228,27 +228,79 @@ local function get_key_descriptor_index(keys, input_key_depth)
 end
 
 ---@param entries Entry[]
+---@param keys string[]
+---@return integer|nil - The index of the entry
+local function get_entry_by_keys(entries, keys)
+    for ii=1, #entries do
+        local entry = entries[ii]
+        local splitted = utils:split_by_char(entry.key, ".")
+
+        local found = true
+
+        for jj=1, #keys do
+            if keys[jj] ~= splitted[jj] then
+                found = false
+                break
+            end
+        end
+
+        if found then
+            return ii
+        end
+    end
+end
+
+---@param keys KeyDescription[]
+---@return string[]
+local function flat_key_description(keys)
+    local flat_keys = {}
+
+    for ii=1, #keys do
+        if keys[ii].type == "key" then
+            flat_keys[#flat_keys + 1] = keys[ii].key
+        elseif keys[ii].type == "array_index" then
+            flat_keys[#flat_keys + 1] = tostring(keys[ii].key)
+        end
+    end
+
+    return flat_keys
+end
+
+---Subtracts indexes if there are other indexes before already
+---This ensures that no extra objects are created in `write_keys`
+---Example: Entry got 4 indexes, keys want to index `6`. This will subtract 4 from `6` to get `2`.
+---@param entries Entry[]
+---@param starting_keys KeyDescription[]
+---@param key KeyDescription - Th key to be inserted; must be of type `array_index`; will be modified in-place
+local function normalize_array_indexes(entries, starting_keys, key)
+    local starting_keys_flat = flat_key_description(starting_keys)
+    local starting_key_index = get_entry_by_keys(entries, starting_keys_flat)
+    local entry = entries[starting_key_index]
+
+    key.key = key.key - #entry.value
+end
+
+---@param entries Entry[]
 ---@param keys KeyDescription[]
 ---@param buffer number
 function M:insert_new_key(entries, keys, buffer)
     -- Close current buffer
     vim.cmd [[quit!]]
 
-    local input_key = {}
-
-    for ii=1, #keys do
-        if keys[ii].type == "key" then
-            input_key[#input_key + 1] = keys[ii].key
-        elseif keys[ii].type == "array_index" then
-            input_key[#input_key + 1] = tostring(keys[ii].key)
-        end
-    end
-
+    local input_key = flat_key_description(keys)
     local entry_index = find_best_fitting_entry(entries, input_key) or 0
     local entry = entries[entry_index]
     local existing_input_keys_depth = #utils:split_by_char(entry.key, ".") + 1
     local existing_keys_index = get_key_descriptor_index(keys, existing_input_keys_depth)
     local remaining_keys = table.slice(keys, existing_keys_index, #keys)
+
+    if remaining_keys[1].type == "array_index" then
+        local starting_keys = table.slice(keys, 1, existing_keys_index - 1)
+
+        normalize_array_indexes(entries, starting_keys, remaining_keys[1])
+    end
+
+    -- normalize_array_indexes(remaining_keys)
 
     local _writes = {}
     write_keys(remaining_keys, 1, _writes)
