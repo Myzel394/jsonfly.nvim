@@ -18,6 +18,17 @@ function table.slice(tbl, first, last, step)
   return sliced
 end
 
+---@param line string
+---@return boolean - Whether the line contains an empty JSON object
+local function line_contains_empty_json(line)
+    -- Starting and ending on same line
+    return string.match(line, ".*[%{%[]%s*[%]%]]%s*,?*%s*")
+        -- Opening bracket on line
+        or string.match(line, ".*[%{%[]%s*")
+        -- Closing bracket on line
+        or string.match(line, ".*.*[%]%}]%s*,?%s*")
+end
+
 ---@param entry Entry
 ---@param key string
 ---@param index number
@@ -67,45 +78,39 @@ end
 
 ---@param keys KeyDescription
 ---@param index number - Index of the key
-local function write_keys(keys, index)
-    local lines = {}
+---@param lines string[] - Table to write the lines to
+local function write_keys(keys, index, lines)
     local key = keys[index]
 
     if index == #keys then
-        return {
-            { "\"" .. key.key .. "\": \"" .. CURSOR_SEARCH_HELPER .. "\""},
-            true
-        }
+        lines[#lines + 1] = "\"" .. key.key .. "\": \"" .. CURSOR_SEARCH_HELPER .. "\""
+        return
     end
 
-    local insertions = write_keys(keys, index + 1)
-
     if key.type == "object_wrapper" then
-        lines[#lines + 1] = "{"
-
-        for ii=1, #insertions do
-            lines[#lines + 1] = insertions[ii]
+        local previous_line = lines[#lines] or ""
+        if line_contains_empty_json(previous_line) then
+            lines[#lines + 1] = "{"
+        else
+            lines[#lines] = previous_line .. " {"
         end
+
+        write_keys(keys, index + 1, lines)
 
         lines[#lines + 1] = "}"
     elseif key.type == "key" then
         lines[#lines + 1] = "\"" .. key.key .. "\":"
 
-        for ii=1, #insertions do
-            lines[#lines + 1] = insertions[ii]
-        end
-    elseif key.type == "array_key" then
-        lines[#lines + 1] = "\"" .. key.key .. "\":"
-
-        for ii=1, #insertions do
-            lines[#lines + 1] = insertions[ii]
-        end
+        write_keys(keys, index + 1, lines)
     elseif key.type == "array_wrapper" then
-        lines[#lines + 1] = "["
-
-        for ii=1, #insertions do
-            lines[#lines + 1] = insertions[ii]
+        local previous_line = lines[#lines] or ""
+        -- Starting and ending on same line
+        if line_contains_empty_json(previous_line) then
+            lines[#lines + 1] = "["
+        else
+            lines[#lines] = previous_line .. " ["
         end
+        write_keys(keys, index + 1, lines)
 
         lines[#lines + 1] = "]"
     elseif key.type == "array_index" then
@@ -115,13 +120,8 @@ local function write_keys(keys, index)
             lines[#lines + 1] = "{},"
         end
 
-        -- Write key
-        for ii=1, #insertions do
-            lines[#lines + 1] = insertions[ii]
-        end
+        write_keys(keys, index + 1, lines)
     end
-
-    return lines
 end
 
 ---@param buffer number
@@ -144,7 +144,7 @@ local function add_comma(buffer, insertion_line)
                 local char = line:sub(char_index, char_index)
 
                 if char ~= " " and char ~= "\t" and char ~= "\n" and char ~= "\r" then
-                    if char == "," then
+                    if char == "," or char == "{" or char == "[" then
                         return
                     end
 
@@ -163,6 +163,28 @@ local function add_comma(buffer, insertion_line)
             end
         end
     end
+end
+
+---@return number - The new line number to be used, as the buffer has been modified
+local function expand_empty_object(buffer, line_number)
+    local line = vim.api.nvim_buf_get_lines(buffer, line_number, line_number + 1, false)[1] or ""
+
+    if line_contains_empty_json(line) then
+        vim.api.nvim_buf_set_lines(
+            buffer,
+            line_number,
+            line_number + 1,
+            false,
+            {
+                "{",
+                "},"
+            }
+        )
+
+        return line_number + 1
+    end
+
+    return line_number
 end
 
 ---@param buffer number
@@ -191,12 +213,11 @@ local function get_key_descriptor_index(keys, input_key_depth)
     local index = 0
 
     for ii=1, #keys do
-        if keys[ii].type == "key" or keys[ii].type == "array_key" or keys[ii].type == "array_index" then
+        if keys[ii].type == "key" or keys[ii].type == "array_index" then
             depth = depth + 1
         end
 
         if depth >= input_key_depth then
-            print(vim.inspect(ii))
             index = ii
             break
         end
@@ -211,18 +232,16 @@ end
 function M:insert_new_key(entries, keys, buffer)
     -- Close current buffer
     vim.cmd [[quit!]]
-    
+
     local input_key = {}
 
     for ii=1, #keys do
         if keys[ii].type == "key" then
-            input_key[#input_key+1] = keys[ii].key
+            input_key[#input_key + 1] = keys[ii].key
         elseif keys[ii].type == "array_index" then
-            input_key[#input_key+1] = keys[ii].key
+            input_key[#input_key + 1] = tostring(keys[ii].key)
         end
     end
-
-    print(vim.inspect(input_key))
 
     local entry_index = find_best_fitting_entry(entries, input_key) or 0
     local entry = entries[entry_index]
@@ -230,7 +249,8 @@ function M:insert_new_key(entries, keys, buffer)
     local existing_keys_index = get_key_descriptor_index(keys, existing_input_keys_depth)
     local remaining_keys = table.slice(keys, existing_keys_index, #keys)
 
-    local _writes = write_keys(remaining_keys, 1)
+    local _writes = {}
+    write_keys(remaining_keys, 1, _writes)
     local writes = {}
 
     for ii=1, #_writes do
@@ -246,17 +266,24 @@ function M:insert_new_key(entries, keys, buffer)
     vim.api.nvim_win_set_cursor(0, {entry.position.line_number, entry.position.value_start})
     vim.cmd [[execute "normal %"]]
 
+    local changes = #writes
     local start_line = vim.api.nvim_win_get_cursor(0)[1] - 1
 
     -- Add comma to previous JSON entry
     add_comma(buffer, start_line)
+    local new_start_line = expand_empty_object(buffer, start_line)
+
+    if new_start_line ~= start_line then
+        changes = changes + math.abs(new_start_line - start_line)
+        start_line = new_start_line
+    end
 
     -- Insert new lines
     vim.api.nvim_buf_set_lines(buffer, start_line, start_line, false, writes)
 
     -- Format lines
     vim.api.nvim_win_set_cursor(0, {start_line, 1})
-    vim.cmd('execute "normal =' .. #writes .. 'j"')
+    vim.cmd('execute "normal =' .. changes .. 'j"')
 
     M:jump_to_cursor_helper(buffer)
 end
