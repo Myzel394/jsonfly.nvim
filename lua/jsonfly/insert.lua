@@ -280,6 +280,18 @@ local function normalize_array_indexes(entries, starting_keys, key)
     key.key = key.key - #entry.value
 end
 
+---@param entries Entry[] - Entries, they must be children of a top level array
+---Counts how many top level children an array has
+local function count_array_children(entries)
+    for ii=1, #entries do
+        if string.match(entries[ii].key, "^%d+$") then
+            return ii
+        end
+    end
+
+    return #entries
+end
+
 ---@param entries Entry[]
 ---@param keys KeyDescription[]
 ---@param buffer number
@@ -289,15 +301,42 @@ function M:insert_new_key(entries, keys, buffer)
 
     local input_key = flat_key_description(keys)
     local entry_index = find_best_fitting_entry(entries, input_key) or 0
+    ---@type Entry
     local entry = entries[entry_index]
-    local existing_input_keys_depth = #utils:split_by_char(entry.key, ".") + 1
-    local existing_keys_index = get_key_descriptor_index(keys, existing_input_keys_depth)
-    local remaining_keys = table.slice(keys, existing_keys_index, #keys)
 
-    if remaining_keys[1].type == "array_index" then
-        local starting_keys = table.slice(keys, 1, existing_keys_index - 1)
+    ---@type KeyDescription[]
+    local remaining_keys
+    ---@type integer
+    local existing_keys_index
 
-        normalize_array_indexes(entries, starting_keys, remaining_keys[1])
+    if entry == nil then
+        -- Insert as root
+        existing_keys_index = 0
+        remaining_keys = table.slice(keys, 2, #keys)
+
+        -- Top level array
+        if entries[1].key == "0" then
+            -- Normalize array indexes
+            remaining_keys[1].key = remaining_keys[1].key - count_array_children(entries)
+        end
+
+        entry = {
+            key = "",
+            position = {
+                key_start = 1,
+                line_number = 1,
+                value_start = 1
+            }
+        }
+    else
+        local existing_input_keys_depth = #utils:split_by_char(entry.key, ".") + 1
+        existing_keys_index = get_key_descriptor_index(keys, existing_input_keys_depth)
+        remaining_keys = table.slice(keys, existing_keys_index, #keys)
+
+        if remaining_keys[1].type == "array_index" then
+            local starting_keys = table.slice(keys, 1, existing_keys_index - 1)
+            normalize_array_indexes(entries, starting_keys, remaining_keys[1])
+        end
     end
 
     local _writes = {}
