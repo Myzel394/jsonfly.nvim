@@ -132,7 +132,14 @@ local function add_comma(buffer, insertion_line)
 
     -- Find next non-empty character in reverse
     for ii=insertion_line, 0, -BUFFER_SIZE do
-        local previous_lines = vim.api.nvim_buf_get_lines(buffer, ii - BUFFER_SIZE, ii, false)
+        local previous_lines = vim.api.nvim_buf_get_lines(
+            buffer,
+            math.max(0, ii - BUFFER_SIZE),
+            ii,
+            false
+        )
+
+        print("previous lins: " .. vim.inspect(previous_lines))
 
         if #previous_lines == 0 then
             return
@@ -150,12 +157,12 @@ local function add_comma(buffer, insertion_line)
                     end
 
                     -- Insert comma at position
-                    local line_number = ii - (BUFFER_SIZE - jj)
+                    local line_number = math.max(0, ii - BUFFER_SIZE) + jj - 1
                     vim.api.nvim_buf_set_text(
                         buffer,
-                        line_number - 1,
+                        line_number,
                         char_index,
-                        line_number - 1,
+                        line_number,
                         char_index,
                         {","}
                     )
