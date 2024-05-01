@@ -83,6 +83,8 @@ The following schemas are valid:
 * Array indices: `expo.android.imageAssets.0.uri`, `expo.android.imageAssets.3.uri`, `expo.android.imageAssets.[3].uri`
 * Escaping: `expo.android.tests.\0.name` -> Will not create an array but a key with the name `0`
 
+Please note: JSON(fly) is intended to be used with **human-readable** JSON files. Inserting keys won't work with minified JSON files.
+
 ## See also
 
 * [jsonpath.nvim](https://github.com/phelipetls/jsonpath.nvim) - Copy JSON paths to your clipboard
