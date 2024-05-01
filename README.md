@@ -11,6 +11,7 @@ It's completely customizable and even supports highlighting of the values.
 ## Features
 
 * 🔍 Search for deeply nested keys - `expo.android.imageAsset.0.uri`
+* ⏎ Insert keys quickly into your buffer
 * 🎨 See values with their correct syntax highlighting (numbers, strings, booleans, null; configurable)
 * 💻 Use your LSP or the built-in JSON parser
 * 🗑 Values automatically cached for faster navigation
@@ -66,6 +67,21 @@ Go to a JSON file and run:
 
 ```lua
 :Telescope jsonfly
+
+
+Now you can search for keys, subkeys, part of keys etc.
+
+### Inserting Keys
+
+If you search for a key that doesn't exist you can add it to your buffer by pressing `<C-a>` (CTRL + a).
+
+You can enter nested keys, arrays, indices, subkeys etc. JSON(fly) will automatically manage everything for you.
+
+The following schemas are valid:
+
+* Nested keys: `expo.android.imageAssets.`
+* Array indices: `expo.android.imageAssets.0.uri`, `expo.android.imageAssets.3.uri`, `expo.android.imageAssets.[3].uri`
+* Escaping: `expo.android.tests.\0.name` -> Will not create an array but a key with the name `0`
 
 ## See also
 
