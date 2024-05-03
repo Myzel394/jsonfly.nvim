@@ -1,7 +1,7 @@
 # jsonfly.nvim
 
 Fly through your JSON files with ease. 
-Search ✨ blazingly fast ✨ for keys via [Telescope](https://github.com/nvim-telescope/telescope.nvim), and navigate through your JSON structure with ease.
+Search ✨ blazingly fast ✨ for keys via [Telescope](https://github.com/nvim-telescope/telescope.nvim), navigate through your JSON structure with ease, and insert deeply nested keys without fear.
 
 json(fly) is a Telescope extension that will show you all keys (including nested ones) in your JSON files and allow you to search and jump to them quickly.
 It's completely customizable and even supports highlighting of the values.
