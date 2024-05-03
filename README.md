@@ -11,7 +11,7 @@ It's completely customizable and even supports highlighting of the values.
 ## Features
 
 * 🔍 Search for deeply nested keys - `expo.android.imageAsset.0.uri`
-* ⏎ Insert keys quickly into your buffer
+* 👀 Insert nested keys quickly into your buffer
 * 🎨 See values with their correct syntax highlighting (numbers, strings, booleans, null; configurable)
 * 💻 Use your LSP or the built-in JSON parser
 * 🗑 Values automatically cached for faster navigation
@@ -72,6 +72,8 @@ Go to a JSON file and run:
 Now you can search for keys, subkeys, part of keys etc.
 
 ### Inserting Keys
+
+JSON(fly) supports inserting your current search prompt into your buffer.
 
 If you search for a key that doesn't exist you can add it to your buffer by pressing `<C-a>` (CTRL + a).
 

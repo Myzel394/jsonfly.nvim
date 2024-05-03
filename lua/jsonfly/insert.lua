@@ -139,8 +139,6 @@ local function add_comma(buffer, insertion_line)
             false
         )
 
-        print("previous lins: " .. vim.inspect(previous_lines))
-
         if #previous_lines == 0 then
             return
         end
@@ -178,6 +176,9 @@ local function expand_empty_object(buffer, line_number)
     local line = vim.api.nvim_buf_get_lines(buffer, line_number, line_number + 1, false)[1] or ""
 
     if line_contains_empty_json(line, false) then
+        local position_closing_bracket = string.find(line, "[%}%]]")
+        local remaining_line = string.sub(line, position_closing_bracket + 1)
+
         vim.api.nvim_buf_set_lines(
             buffer,
             line_number,
@@ -185,7 +186,7 @@ local function expand_empty_object(buffer, line_number)
             false,
             {
                 "{",
-                "},"
+                "}" .. remaining_line
             }
         )
 
@@ -193,25 +194,6 @@ local function expand_empty_object(buffer, line_number)
     end
 
     return line_number
-end
-
----@param buffer number
-function M:jump_to_cursor_helper(buffer)
-    vim.fn.search(CURSOR_SEARCH_HELPER)
-
-    -- Remove cursor helper
-    local position = vim.api.nvim_win_get_cursor(0)
-    vim.api.nvim_buf_set_text(
-        buffer,
-        position[1] - 1,
-        position[2],
-        position[1] - 1,
-        position[2] + #CURSOR_SEARCH_HELPER,
-        {""}
-    )
-
-    -- -- Go into insert mode
-    vim.cmd [[execute "normal a"]]
 end
 
 ---@param keys KeyDescription[]
@@ -259,7 +241,7 @@ end
 
 ---@param keys KeyDescription[]
 ---@return string[]
-local function flat_key_description(keys)
+local function flatten_key_description(keys)
     local flat_keys = {}
 
     for ii=1, #keys do
@@ -280,7 +262,7 @@ end
 ---@param starting_keys KeyDescription[]
 ---@param key KeyDescription - Th key to be inserted; must be of type `array_index`; will be modified in-place
 local function normalize_array_indexes(entries, starting_keys, key)
-    local starting_keys_flat = flat_key_description(starting_keys)
+    local starting_keys_flat = flatten_key_description(starting_keys)
     local starting_key_index = get_entry_by_keys(entries, starting_keys_flat)
     local entry = entries[starting_key_index]
 
@@ -299,6 +281,27 @@ local function count_array_children(entries)
     return #entries
 end
 
+---Jump to the cursor helper and remove it
+---@param buffer number
+function M:jump_to_cursor_helper(buffer)
+    vim.fn.search(CURSOR_SEARCH_HELPER)
+
+    -- Remove cursor helper
+    local position = vim.api.nvim_win_get_cursor(0)
+    vim.api.nvim_buf_set_text(
+        buffer,
+        position[1] - 1,
+        position[2],
+        position[1] - 1,
+        position[2] + #CURSOR_SEARCH_HELPER,
+        {""}
+    )
+
+    -- -- Go into insert mode
+    vim.cmd [[execute "normal a"]]
+end
+
+-- TODO: Handle top level empty arrays
 ---@param entries Entry[]
 ---@param keys KeyDescription[]
 ---@param buffer number
@@ -306,26 +309,17 @@ function M:insert_new_key(entries, keys, buffer)
     -- Close current buffer
     vim.cmd [[quit!]]
 
-    local input_key = flat_key_description(keys)
-    local entry_index = find_best_fitting_entry(entries, input_key) or 0
-    ---@type Entry
-    local entry = entries[entry_index]
+    local input_key = flatten_key_description(keys)
+    ---@type boolean
+    local should_add_comma = true
 
     ---@type KeyDescription[]
     local remaining_keys
-    ---@type integer
-    local existing_keys_index
+    ---@type Entry
+    local entry
 
-    if entry == nil then
-        -- Insert as root
-        existing_keys_index = 0
+    if #entries == 0 then
         remaining_keys = table.slice(keys, 2, #keys)
-
-        -- Top level array
-        if entries[1].key == "0" then
-            -- Normalize array indexes
-            remaining_keys[1].key = remaining_keys[1].key - count_array_children(entries)
-        end
 
         entry = {
             key = "",
@@ -335,14 +329,42 @@ function M:insert_new_key(entries, keys, buffer)
                 value_start = 1
             }
         }
+        should_add_comma = false
     else
-        local existing_input_keys_depth = #utils:split_by_char(entry.key, ".") + 1
-        existing_keys_index = get_key_descriptor_index(keys, existing_input_keys_depth)
-        remaining_keys = table.slice(keys, existing_keys_index, #keys)
+        local entry_index = find_best_fitting_entry(entries, input_key) or 0
+        entry = entries[entry_index]
 
-        if remaining_keys[1].type == "array_index" then
-            local starting_keys = table.slice(keys, 1, existing_keys_index - 1)
-            normalize_array_indexes(entries, starting_keys, remaining_keys[1])
+        ---@type integer
+        local existing_keys_index
+
+        if entry == nil then
+            -- Insert as root
+            existing_keys_index = 0
+            remaining_keys = table.slice(keys, 2, #keys)
+
+            -- Top level array
+            if entries[1].key == "0" then
+                -- Normalize array indexes
+                remaining_keys[1].key = remaining_keys[1].key - count_array_children(entries)
+            end
+
+            entry = {
+                key = "",
+                position = {
+                    key_start = 1,
+                    line_number = 1,
+                    value_start = 1
+                }
+            }
+        else
+            local existing_input_keys_depth = #utils:split_by_char(entry.key, ".") + 1
+            existing_keys_index = get_key_descriptor_index(keys, existing_input_keys_depth)
+            remaining_keys = table.slice(keys, existing_keys_index, #keys)
+
+            if remaining_keys[1].type == "array_index" then
+                local starting_keys = table.slice(keys, 1, existing_keys_index - 1)
+                normalize_array_indexes(entries, starting_keys, remaining_keys[1])
+            end
         end
     end
 
@@ -367,7 +389,9 @@ function M:insert_new_key(entries, keys, buffer)
     local start_line = vim.api.nvim_win_get_cursor(0)[1] - 1
 
     -- Add comma to previous JSON entry
-    add_comma(buffer, start_line)
+    if should_add_comma then
+        add_comma(buffer, start_line)
+    end
     local new_start_line = expand_empty_object(buffer, start_line)
 
     if new_start_line ~= start_line then
