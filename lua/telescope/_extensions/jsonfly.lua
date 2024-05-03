@@ -12,6 +12,10 @@
 ---@field subkeys_display "normal"|"waterfall" - Display subkeys in a normal or waterfall style, Default: "normal"
 ---@field backend "lua"|"lsp" - Backend to use for parsing JSON, "lua" = Use our own Lua parser to parse the JSON, "lsp" = Use your LSP to parse the JSON (currently only https://github.com/Microsoft/vscode-json-languageservice is supported). If the "lsp" backend is selected but the LSP fails, it will fallback to the "lua" backend, Default: "lsp"
 ---@field use_cache number - Whether to use cache the parsed JSON. The cache will be activated if the number of lines is greater or equal to this value, By default, the cache is activate when the file if 1000 lines or more; `0` to disable the cache, Default: 500
+---@field commands Commands - Shortcuts for commands
+--
+---@class Commands
+---@field add_key string[] - Add the currently entered key to the JSON. Must be of type [string, string] <mode, key>; Example: {"n", "a"} -> When in normal mode, press "a" to add the key; Example: {"i", "<C-a>"} -> When in insert mode, press <C-a> to add the key; Default: {"i", "<C-a>"}
 ---
 ---@class Highlights
 ---@field number string - Highlight group for numbers, Default: "@number.json"
@@ -23,6 +27,7 @@
 local parsers = require"jsonfly.parsers"
 local utils = require"jsonfly.utils"
 local cache = require"jsonfly.cache"
+local insert = require"jsonfly.insert"
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
@@ -30,6 +35,8 @@ local pickers = require "telescope.pickers"
 local conf = require"telescope.config".values
 local make_entry = require "telescope.make_entry"
 local entry_display = require "telescope.pickers.entry_display"
+
+local action_state = require "telescope.actions.state"
 
 ---@type Options
 local opts = {
@@ -50,6 +57,9 @@ local opts = {
     subkeys_display = "normal",
     backend = "lsp",
     use_cache = 500,
+    commands = {
+        add_key = {"i", "<C-a>"}
+    }
 }
 
 ---@param entries Entry[]
@@ -76,6 +86,22 @@ local function show_picker(entries, buffer)
 
     pickers.new(opts, {
         prompt_title = opts.prompt_title,
+        attach_mappings = function(_, map)
+            map(
+                opts.commands.add_key[1],
+                opts.commands.add_key[2],
+                function(prompt_bufnr)
+                    local current_picker = action_state.get_current_picker(prompt_bufnr)
+                    local input = current_picker:_get_prompt()
+
+                    local key_descriptor = utils:extract_key_description(input)
+
+                    insert:insert_new_key(entries, key_descriptor, buffer)
+                end
+            )
+
+            return true
+        end,
         finder = finders.new_table {
             results = entries,
             ---@param entry Entry
