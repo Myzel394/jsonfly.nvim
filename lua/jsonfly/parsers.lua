@@ -124,6 +124,10 @@ function M:parse_lsp_value(result)
 end
 
 
+---@class Range
+---@field start Position
+---@field ["end"] Position
+--
 ---@class Symbol
 ---@field name string
 ---@field kind number 2 = Object, 16 = Number, 15 = String, 18 = Array, 13 = Null, 17 = Boolean
@@ -131,10 +135,6 @@ end
 ---@field selectionRange Range
 ---@field detail string
 ---@field children Symbol[]
---
----@class Range
----@field start Position
----@field ["end"] Position
 --
 ---@class Position
 ---@field line number

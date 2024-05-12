@@ -28,6 +28,7 @@ local parsers = require"jsonfly.parsers"
 local utils = require"jsonfly.utils"
 local cache = require"jsonfly.cache"
 local insert = require"jsonfly.insert"
+local languages = require"jsonfly.languages"
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
@@ -196,6 +197,16 @@ return require"telescope".register_extension {
                     "textDocument/documentSymbol",
                     params,
                     function(error, lsp_response)
+                        print(vim.inspect(lsp_response))
+
+                        languages:filter_lsp_symbol_by_position(
+                            lsp_response[1],
+                            params.position
+                        )
+
+                        print(vim.inspect(lsp_response))
+
+
                         if error then
                             run_lua_parser()
                             return
