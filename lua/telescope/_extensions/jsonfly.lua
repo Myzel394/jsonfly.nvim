@@ -10,6 +10,7 @@
 ---@field highlights Highlights - Highlight groups for different types
 ---@field jump_behavior "key_start"|"value_start" - Behavior for jumping to the location, "key_start" == Jump to the start of the key, "value_start" == Jump to the start of the value, Default: "key_start"
 ---@field subkeys_display "normal"|"waterfall" - Display subkeys in a normal or waterfall style, Default: "normal"
+---@field show_nested_child_preview boolean - Whether to show a preview of nested children, Default: true
 ---@field backend "lua"|"lsp" - Backend to use for parsing JSON, "lua" = Use our own Lua parser to parse the JSON, "lsp" = Use your LSP to parse the JSON (currently only https://github.com/Microsoft/vscode-json-languageservice is supported). If the "lsp" backend is selected but the LSP fails, it will fallback to the "lua" backend, Default: "lsp"
 ---@field use_cache number - Whether to use cache the parsed JSON. The cache will be activated if the number of lines is greater or equal to this value, By default, the cache is activate when the file if 1000 lines or more; `0` to disable the cache, Default: 500
 ---@field commands Commands - Shortcuts for commands
@@ -55,6 +56,7 @@ local DEFAULT_CONFIG = {
     },
     jump_behavior = "key_start",
     subkeys_display = "normal",
+    show_nested_child_preview = false,
     backend = "lsp",
     use_cache = 500,
     commands = {
@@ -116,7 +118,7 @@ local function show_picker(entries, buffer, xopts)
                     value = buffer,
                     ordinal = entry.key,
                     display = function(_)
-                        local preview, hl_group_key = utils:create_display_preview(entry.value, conceal)
+                        local preview, hl_group_key = utils:create_display_preview(entry.value, conceal, global_config.show_nested_child_preview)
 
                         local key = global_config.subkeys_display == "normal" and entry.key or utils:replace_previous_keys(entry.key, " ")
 
