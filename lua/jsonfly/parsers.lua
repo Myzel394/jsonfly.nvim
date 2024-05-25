@@ -19,6 +19,12 @@ local PRIMITIVE_TYPES = {
     number = true,
     boolean = true,
 }
+local CONTAINS_CHILDREN_TYPES = {
+    [2] = true, -- Module / Javascript Object
+    [8] = true, -- Field
+    [18] = true, -- Array
+    [19] = true, -- Object
+}
 
 local M = {}
 
@@ -91,7 +97,7 @@ end
 ---@return string|number|table|boolean|nil
 function M:parse_lsp_value(result)
     -- Object
-    if result.kind == 2 then
+    if CONTAINS_CHILDREN_TYPES[result.kind] then
         local value = {}
 
         for _, child in ipairs(result.children) do
@@ -165,7 +171,7 @@ function M:get_entries_from_lsp_symbols(symbols)
         }
         keys[#keys + 1] = entry
 
-        if symbol.kind == 2 or symbol.kind == 18 then
+        if CONTAINS_CHILDREN_TYPES[symbol.kind] then
             local sub_keys = M:get_entries_from_lsp_symbols(symbol.children)
 
             for jindex=1, #sub_keys do

@@ -56,7 +56,7 @@ local DEFAULT_CONFIG = {
     },
     jump_behavior = "key_start",
     subkeys_display = "normal",
-    show_nested_child_preview = false,
+    show_nested_child_preview = true,
     backend = "lsp",
     use_cache = 500,
     commands = {
@@ -196,17 +196,19 @@ return require("telescope").register_extension {
             if global_config.backend == "lsp" then
                 local params = vim.lsp.util.make_position_params(xopts.winnr)
 
-                vim.lsp.buf_request(
+                vim.lsp.buf_request_all(
                     current_buf,
                     "textDocument/documentSymbol",
                     params,
-                    function(error, lsp_response)
-                        if error then
+                    function(response)
+                        if response == nil or #response == 0 then
                             run_lua_parser()
                             return
                         end
 
-                        local entries = parsers:get_entries_from_lsp_symbols(lsp_response)
+                        local result = response[1].result
+
+                        local entries = parsers:get_entries_from_lsp_symbols(result)
 
                         if allow_cache then
                             cache:cache_buffer(current_buf, entries)
