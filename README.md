@@ -1,9 +1,9 @@
 # jsonfly.nvim
 
-Fly through your JSON files with ease. 
+Fly through your JSON, XML and YAML files with ease. 
 Search ✨ blazingly fast ✨ for keys via [Telescope](https://github.com/nvim-telescope/telescope.nvim), navigate through your JSON structure with ease, and insert deeply nested keys without fear.
 
-json(fly) is a Telescope extension that will show you all keys (including nested ones) in your JSON files and allow you to search and jump to them quickly.
+json(fly) is a Telescope extension that will show you all keys (including nested ones) in your JSON (or XML or YAML) files and allow you to search and jump to them quickly.
 It's completely customizable and even supports highlighting of the values.
 
 <img src="docs/horizontal_layout.png">
@@ -48,7 +48,7 @@ Here's how I load it with lazy.nvim with lazy-loading and `<leader>j` as the key
             "<leader>j",
             "<cmd>Telescope jsonfly<cr>",
             desc = "Open json(fly)",
-            ft = { "json" },
+            ft = { "json", "xml", "yaml" },
             mode = "n"
         }
     }
