@@ -63,14 +63,18 @@ end
 
 ---@param value any
 ---@param conceal boolean
-function M:create_display_preview(value, conceal)
+---@param render_objects boolean
+function M:create_display_preview(value, conceal, render_objects)
     local t = type(value)
 
     if t == "table" then
+        if render_objects == false then
+            return "", "other"
+        end
         local preview_table = {}
 
         for k, v in pairs(value) do
-            preview_table[#preview_table + 1] = k .. ": " .. M:create_display_preview(v, conceal)
+            preview_table[#preview_table + 1] = k .. ": " .. M:create_display_preview(v, conceal, render_objects)
         end
 
         return "{ " .. table.concat(preview_table, ", ") .. " }", "other"
