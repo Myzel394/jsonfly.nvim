@@ -29,6 +29,7 @@ local parsers = require"jsonfly.parsers"
 local utils = require"jsonfly.utils"
 local cache = require"jsonfly.cache"
 local insert = require"jsonfly.insert"
+local languages = require"jsonfly.languages"
 
 local json = require"jsonfly.json"
 local finders = require "telescope.finders"
