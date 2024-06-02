@@ -67,7 +67,7 @@ Go to a JSON file and run:
 
 ```lua
 :Telescope jsonfly
-
+```
 
 Now you can search for keys, subkeys, part of keys etc.
 
@@ -90,7 +90,6 @@ Please note: JSON(fly) is intended to be used with **human-readable** JSON files
 ## See also
 
 * [jsonpath.nvim](https://github.com/phelipetls/jsonpath.nvim) - Copy JSON paths to your clipboard
-```
 
 ## Configuration
 
