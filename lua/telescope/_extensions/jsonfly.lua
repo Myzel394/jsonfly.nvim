@@ -196,27 +196,38 @@ return require("telescope").register_extension {
             if global_config.backend == "lsp" then
                 local params = vim.lsp.util.make_position_params(xopts.winnr)
 
-                vim.lsp.buf_request_all(
-                    current_buf,
-                    "textDocument/documentSymbol",
-                    params,
-                    function(response)
-                        if response == nil or #response == 0 then
-                            run_lua_parser()
-                            return
-                        end
-
-                        local result = response[1].result
-
-                        local entries = parsers:get_entries_from_lsp_symbols(result)
-
-                        if allow_cache then
-                            cache:cache_buffer(current_buf, entries)
-                        end
-
-                        show_picker(entries, current_buf, xopts)
+            vim.lsp.buf_request_all(
+                current_buf,
+                "textDocument/documentSymbol",
+                params,
+                function(results)
+                    if results == nil or vim.tbl_isempty(results) then
+                        run_lua_parser()
+                        return
                     end
-                )
+
+                    local combined_result = {}
+
+                    for _, res in pairs(results) do
+                        if res.result then
+                            vim.list_extend(combined_result, res.result)
+                        end
+                    end
+
+                    if vim.tbl_isempty(combined_result) then
+                        run_lua_parser()
+                        return
+                    end
+
+                    local entries = parsers:get_entries_from_lsp_symbols(combined_result)
+
+                    if allow_cache then
+                        cache:cache_buffer(current_buf, entries)
+                    end
+
+                    show_picker(entries, current_buf, xopts)
+                end
+            )
             else
                 run_lua_parser()
             end
