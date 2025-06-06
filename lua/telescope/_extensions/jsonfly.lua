@@ -26,19 +26,19 @@
 ---@field null string - Highlight group for null values, Default: "@constant.builtin.json"
 ---@field other string - Highlight group for other types, Default: "@label.json"
 
-local parsers = require"jsonfly.parsers"
-local utils = require"jsonfly.utils"
-local cache = require"jsonfly.cache"
-local insert = require"jsonfly.insert"
+local parsers = require("jsonfly.parsers")
+local utils = require("jsonfly.utils")
+local cache = require("jsonfly.cache")
+local insert = require("jsonfly.insert")
 
-local json = require"jsonfly.json"
-local finders = require "telescope.finders"
-local pickers = require "telescope.pickers"
+local json = require("jsonfly.json")
+local finders = require("telescope.finders")
+local pickers = require("telescope.pickers")
 local conf = require("telescope.config").values
-local make_entry = require "telescope.make_entry"
-local entry_display = require "telescope.pickers.entry_display"
+local make_entry = require("telescope.make_entry")
+local entry_display = require("telescope.pickers.entry_display")
 
-local action_state = require "telescope.actions.state"
+local action_state = require("telescope.actions.state")
 
 ---@type Options
 local DEFAULT_CONFIG = {
@@ -79,43 +79,40 @@ local global_config = {}
 ---@param entries Entry[]
 ---@param buffer number
 local function show_picker(entries, buffer, xopts)
-    local config = vim.tbl_deep_extend("force", global_config, xopts or {})
-    local filename = vim.api.nvim_buf_get_name(buffer)
+	local config = vim.tbl_deep_extend("force", global_config, xopts or {})
+	local filename = vim.api.nvim_buf_get_name(buffer)
 
-    local displayer = entry_display.create {
-        separator = " ",
-        items = {
-            { width = 1 },
-            global_config.key_exact_length and { width = global_config.key_max_length } or { remaining = true },
-            { remaining = true },
-        },
-    }
-    ---@type boolean
-    local conceal
+	local displayer = entry_display.create({
+		separator = " ",
+		items = {
+			{ width = 1 },
+			global_config.key_exact_length and { width = global_config.key_max_length } or { remaining = true },
+			{ remaining = true },
+		},
+	})
+	---@type boolean
+	local conceal
 
-    if global_config.conceal == "auto" then
-        conceal = vim.o.conceallevel > 0
-    else
-        conceal = global_config.conceal == true
-    end
+	if global_config.conceal == "auto" then
+		conceal = vim.o.conceallevel > 0
+	else
+		conceal = global_config.conceal == true
+	end
 
-    pickers.new(config, {
-        prompt_title = global_config.prompt_title,
-        attach_mappings = function(_, map)
-            map(
-                global_config.commands.add_key[1],
-                global_config.commands.add_key[2],
-                function(prompt_bufnr)
-                    local current_picker = action_state.get_current_picker(prompt_bufnr)
-                    local input = current_picker:_get_prompt()
+	pickers
+		.new(config, {
+			prompt_title = global_config.prompt_title,
+			attach_mappings = function(_, map)
+				map(global_config.commands.add_key[1], global_config.commands.add_key[2], function(prompt_bufnr)
+					local current_picker = action_state.get_current_picker(prompt_bufnr)
+					local input = current_picker:_get_prompt()
 
-                    local key_descriptor = utils:extract_key_description(input)
+					local key_descriptor = utils:extract_key_description(input)
 
-                    insert:insert_new_key(entries, key_descriptor, buffer)
-                end
-            )
+					insert:insert_new_key(entries, key_descriptor, buffer)
+				end)
 
-            if global_config.commands.copy_jsonpath and utils:is_module_available("jsonpath") then
+if global_config.commands.copy_jsonpath and utils:is_module_available("jsonpath") then
                 map(
                     global_config.commands.copy_jsonpath[1],
                     global_config.commands.copy_jsonpath[2],
@@ -140,121 +137,146 @@ local function show_picker(entries, buffer, xopts)
                 )
             end
 
-            return true
-        end,
-        finder = finders.new_table {
-            results = entries,
-            ---@param entry Entry
-            entry_maker = function(entry)
-                local _, raw_depth = entry.key:gsub("%.", ".")
-                local depth = (raw_depth or 0) + 1
+				return true
+			end,
+			finder = finders.new_table({
+				results = entries,
+				---@param entry Entry
+				entry_maker = function(entry)
+					local _, raw_depth = entry.key:gsub("%.", ".")
+					local depth = (raw_depth or 0) + 1
 
-                return make_entry.set_default_entry_mt({
-                    value = buffer,
-                    ordinal = entry.key,
-                    display = function(_)
-                        local preview, hl_group_key = utils:create_display_preview(entry.value, conceal, global_config.show_nested_child_preview)
+					return make_entry.set_default_entry_mt({
+						value = buffer,
+						ordinal = entry.key,
+						display = function(_)
+							local preview, hl_group_key = utils:create_display_preview(
+								entry.value,
+								conceal,
+								global_config.show_nested_child_preview
+							)
 
-                        local key = global_config.subkeys_display == "normal" and entry.key or utils:replace_previous_keys(entry.key, " ")
+							local key = global_config.subkeys_display == "normal" and entry.key
+								or utils:replace_previous_keys(entry.key, " ")
 
-                        return displayer {
-                            { depth, "TelescopeResultsNumber"},
-                            {
-                                utils:truncate_overflow(
-                                    key,
-                                    global_config.key_max_length,
-                                    global_config.overflow_marker
-                                ),
-                                "@property.json",
-                            },
-                            {
-                                utils:truncate_overflow(
-                                    preview,
-                                    global_config.max_length,
-                                    global_config.overflow_marker
-                                ),
-                                global_config.highlights[hl_group_key] or "TelescopeResultsString",
-                            },
-                        }
-                    end,
+							return displayer({
+								{ depth, "TelescopeResultsNumber" },
+								{
+									utils:truncate_overflow(
+										key,
+										global_config.key_max_length,
+										global_config.overflow_marker
+									),
+									"@property.json",
+								},
+								{
+									utils:truncate_overflow(
+										preview,
+										global_config.max_length,
+										global_config.overflow_marker
+									),
+									global_config.highlights[hl_group_key] or "TelescopeResultsString",
+								},
+							})
+						end,
 
-                    bufnr = buffer,
-                    filename = filename,
-                    lnum = entry.position.line_number,
-                    col = global_config.jump_behavior == "key_start"
-                            and entry.position.key_start
-                            -- Use length ("#" operator) as vim jumps to the bytes, not characters
-                            or entry.position.value_start
-                }, config)
-            end,
-        },
-        previewer = conf.grep_previewer(config),
-        sorter = conf.generic_sorter(config),
-        sorting_strategy = "ascending",
-    }):find()
+						bufnr = buffer,
+						filename = filename,
+						lnum = entry.position.line_number,
+						col = global_config.jump_behavior == "key_start" and entry.position.key_start
+							-- Use length ("#" operator) as vim jumps to the bytes, not characters
+							or entry.position.value_start,
+					}, config)
+				end,
+			}),
+			previewer = conf.grep_previewer(config),
+			sorter = conf.generic_sorter(config),
+			sorting_strategy = "ascending",
+		})
+		:find()
 end
 
-return require("telescope").register_extension {
-    setup = function(extension_config)
-        global_config = vim.tbl_deep_extend("force", DEFAULT_CONFIG, extension_config or {})
-    end,
-    exports = {
-        jsonfly = function(xopts)
-            local current_buf = vim.api.nvim_get_current_buf()
+return require("telescope").register_extension({
+	setup = function(extension_config)
+		global_config = vim.tbl_deep_extend("force", DEFAULT_CONFIG, extension_config or {})
+	end,
+	exports = {
+		jsonfly = function(xopts)
+			local current_buf = vim.api.nvim_get_current_buf()
 
-            local cached_entries = cache:get_cache(current_buf)
+			local cached_entries = cache:get_cache(current_buf)
 
-            if cached_entries ~= nil then
-                show_picker(cached_entries, current_buf, xopts)
-                return
-            end
+			if cached_entries ~= nil then
+				show_picker(cached_entries, current_buf, xopts)
+				return
+			end
 
-            local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
-            local content = table.concat(content_lines, "\n")
-            local allow_cache = global_config.use_cache > 0 and #content_lines >= global_config.use_cache
+			local content_lines = vim.api.nvim_buf_get_lines(current_buf, 0, -1, false)
+			local content = table.concat(content_lines, "\n")
+			local allow_cache = global_config.use_cache > 0 and #content_lines >= global_config.use_cache
 
-            if allow_cache then
-                cache:register_listeners(current_buf)
-            end
+			if allow_cache then
+				cache:register_listeners(current_buf)
+			end
 
-            local function run_lua_parser()
-                local parsed = json:decode(content)
-                local entries = parsers:get_entries_from_lua_json(parsed)
+			local function run_lua_parser()
+				local parsed = json:decode(content)
+				local entries = parsers:get_entries_from_lua_json(parsed)
 
-                if allow_cache then
-                    cache:cache_buffer(current_buf, entries)
-                end
+				if allow_cache then
+					cache:cache_buffer(current_buf, entries)
+				end
 
-                show_picker(entries, current_buf, xopts)
-            end
+				show_picker(entries, current_buf, xopts)
+			end
 
-            if global_config.backend == "lsp" then
-                local params = vim.lsp.util.make_position_params(xopts.winnr)
+			if global_config.backend == "lsp" then
+				local params = vim.lsp.util.make_position_params(xopts.winnr)
 
-                vim.lsp.buf_request_all(
-                    current_buf,
-                    "textDocument/documentSymbol",
-                    params,
-                    function(response)
-                        if response == nil or #response == 0 then
-                            run_lua_parser()
-                            return
-                        end
+				-- Check i
+				local clients = vim.lsp.get_clients()
 
-                        local result = response[1].result
+				local any_support = false
 
-                        local entries = parsers:get_entries_from_lsp_symbols(result)
+				for _, client in ipairs(clients) do
+					if client.supports_method("textDocument/documentSymbol") then
+						any_support = true
+						break
+					end
+				end
 
-                        if allow_cache then
-                            cache:cache_buffer(current_buf, entries)
-                        end
+				if any_support then
+					vim.lsp.buf_request_all(current_buf, "textDocument/documentSymbol", params, function(results)
+						if results == nil or vim.tbl_isempty(results) then
+							run_lua_parser()
+							return
+						end
 
-                        show_picker(entries, current_buf, xopts)
-                    end
-                )
-            else
-                run_lua_parser()
-            end
-        end
-    }
-}
+						local combined_result = {}
+
+						for _, res in pairs(results) do
+							if res.result then
+								vim.list_extend(combined_result, res.result)
+							end
+						end
+
+						if vim.tbl_isempty(combined_result) then
+							run_lua_parser()
+							return
+						end
+
+						local entries = parsers:get_entries_from_lsp_symbols(combined_result)
+
+						if allow_cache then
+							cache:cache_buffer(current_buf, entries)
+						end
+
+						show_picker(entries, current_buf, xopts)
+					end)
+				end
+			end
+
+			run_lua_parser()
+		end,
+	},
+})
