@@ -208,7 +208,9 @@ end
 ---@param name string
 ---@return boolean
 function M:is_module_available(name)
-    return pcall(function() require(name) end) == true
+	return pcall(function()
+		require(name)
+	end) == true
 end
 
 return M

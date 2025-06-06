@@ -42,36 +42,36 @@ local action_state = require("telescope.actions.state")
 
 ---@type Options
 local DEFAULT_CONFIG = {
-    key_max_length = 50,
-    key_exact_length = false,
-    max_length = 9999,
-    overflow_marker = "…",
-    conceal = "auto",
-    prompt_title = "JSON(fly)",
-    highlights = {
-        string = "@string.json",
-        number = "@number.json",
-        boolean = "@boolean.json",
-        null = "@constant.builtin.json",
-        other = "@label.json",
-    },
-    jump_behavior = "key_start",
-    subkeys_display = "normal",
-    show_nested_child_preview = true,
-    backend = "lsp",
-    use_cache = 500,
-    commands = {
-        add_key = {"i", "<C-a>"},
-        copy_jsonpath = {
-            "i",
-            "<C-j>",
-            ---@param path string
-            ---@param prompt_bufnr number
-            function(path, prompt_bufnr)
-                vim.fn.setreg("+", path)
-            end
-        }
-    }
+	key_max_length = 50,
+	key_exact_length = false,
+	max_length = 9999,
+	overflow_marker = "…",
+	conceal = "auto",
+	prompt_title = "JSON(fly)",
+	highlights = {
+		string = "@string.json",
+		number = "@number.json",
+		boolean = "@boolean.json",
+		null = "@constant.builtin.json",
+		other = "@label.json",
+	},
+	jump_behavior = "key_start",
+	subkeys_display = "normal",
+	show_nested_child_preview = true,
+	backend = "lsp",
+	use_cache = 500,
+	commands = {
+		add_key = { "i", "<C-a>" },
+		copy_jsonpath = {
+			"i",
+			"<C-j>",
+			---@param path string
+			---@param prompt_bufnr number
+			function(path, prompt_bufnr)
+				vim.fn.setreg("+", path)
+			end,
+		},
+	},
 }
 
 local global_config = {}
@@ -112,30 +112,33 @@ local function show_picker(entries, buffer, xopts)
 					insert:insert_new_key(entries, key_descriptor, buffer)
 				end)
 
-if global_config.commands.copy_jsonpath and utils:is_module_available("jsonpath") then
-                map(
-                    global_config.commands.copy_jsonpath[1],
-                    global_config.commands.copy_jsonpath[2],
-                    function(prompt_bufnr)
-                        local jsonpath = require("jsonpath")
+				if global_config.commands.copy_jsonpath and utils:is_module_available("jsonpath") then
+					map(
+						global_config.commands.copy_jsonpath[1],
+						global_config.commands.copy_jsonpath[2],
+						function(prompt_bufnr)
+							local jsonpath = require("jsonpath")
 
-                        local current_picker = action_state.get_current_picker(prompt_bufnr)
-                        local selection = current_picker:get_selection()
+							local current_picker = action_state.get_current_picker(prompt_bufnr)
+							local selection = current_picker:get_selection()
 
-                        local path = jsonpath.get(vim.treesitter.get_node({
-                            bufnr = buffer,
-                            pos = {
-                                selection.lnum - 1,
-                                selection.index,
-                            }
-                        }), buffer)
+							local path = jsonpath.get(
+								vim.treesitter.get_node({
+									bufnr = buffer,
+									pos = {
+										selection.lnum - 1,
+										selection.index,
+									},
+								}),
+								buffer
+							)
 
-                        if path then
-                            global_config.commands.copy_jsonpath[3](path, prompt_bufnr)
-                        end
-                    end
-                )
-            end
+							if path then
+								global_config.commands.copy_jsonpath[3](path, prompt_bufnr)
+							end
+						end
+					)
+				end
 
 				return true
 			end,
