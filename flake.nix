@@ -25,6 +25,7 @@
       {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
+            just
             stylua
 
             # If this ever fails, just remove it. It's just for the logo.
