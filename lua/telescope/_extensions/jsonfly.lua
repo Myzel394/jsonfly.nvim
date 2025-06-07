@@ -239,7 +239,10 @@ return require("telescope").register_extension({
 			end
 
 			if global_config.backend == "lsp" then
-				local params = vim.lsp.util.make_position_params(xopts.winnr)
+				local params = vim.lsp.util.make_position_params(
+					xopts.winnr,
+					"utf-8"
+				)
 
 				-- Check i
 				local clients = vim.lsp.get_clients()
