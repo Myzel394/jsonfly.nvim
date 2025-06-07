@@ -1,3 +1,5 @@
+**NOTICE**: I'm slowly migrating my repositories to my own Git server. Please visit this repository at [https://git.myzel394.app/Myzel394/jsonfly.nvim](https://git.myzel394.app/Myzel394/jsonfly.nvim) for the latest updates.
+
 # jsonfly.nvim
 
 Fly through your JSON, XML and YAML files with ease. 
@@ -17,6 +19,7 @@ It's completely customizable and even supports highlighting of the values.
 * 🗑 Values automatically cached for faster navigation
 * 🫣 Automatic concealment based on your configuration
 * 📐 Everything completely customizable!
+* 📝 [JSONPath](https://github.com/phelipetls/jsonpath.nvim) support - copy JSON paths to your clipboard
 
 ## Installation
 
@@ -26,14 +29,22 @@ Install with your favorite plugin manager, for example with [lazy.nvim](https://
 {
     "nvim-telescope/telescope.nvim",
     dependencies = {
-        -- "Myzel394/easytables.nvim",
-        -- "Myzel394/telescope-last-positions",
+        -- "https://git.myzel394.app/Myzel394/easytables.nvim",
+        -- "https://git.myzel394.app/Myzel394/telescope-last-positions",
         -- Other dependencies
         -- ..
-        "Myzel394/jsonfly.nvim",
+        "https://git.myzel394.app/Myzel394/jsonfly.nvim",
     }
 }
 ```
+
+Load the extension with:
+
+```lua
+require("telescope").load_extension("jsonfly")
+```
+
+### Example
 
 Here's how I load it with lazy.nvim with lazy-loading and `<leader>j` as the keymap :)
 
@@ -41,7 +52,7 @@ Here's how I load it with lazy.nvim with lazy-loading and `<leader>j` as the key
 {
     "nvim-telescope/telescope.nvim",
     dependencies = {
-        "Myzel394/jsonfly.nvim",
+        "https://git.myzel394.app/Myzel394/jsonfly.nvim",
     },
     keys = {
         {
@@ -53,12 +64,6 @@ Here's how I load it with lazy.nvim with lazy-loading and `<leader>j` as the key
         }
     }
 }
-```
-
-Load the extension with:
-
-```lua
-require("telescope").load_extension("jsonfly")
 ```
 
 ## Usage
@@ -86,6 +91,24 @@ The following schemas are valid:
 * Escaping: `expo.android.tests.\0.name` -> Will not create an array but a key with the name `0`
 
 Please note: JSON(fly) is intended to be used with **human-readable** JSON files. Inserting keys won't work with minified JSON files.
+
+## Integrating jsonpath.nvim
+
+json(fly) has native support for [jsonpath.nvim](https://github.com/phelipetls/jsonpath.nvim).
+
+Just make sure jsonpath is loaded when you call json(fly), and you can copy the currently selected path by pressing `<C-j>` (you can also change this keybinding of course).
+
+Example:
+
+```lua
+{
+    url = "https://git.myzel394.app/Myzel394/jsonfly.nvim",
+    dependencies = {
+        "phelipetls/jsonpath.nvim"
+    },
+},
+
+```
 
 ## See also
 
