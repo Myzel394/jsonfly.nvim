@@ -69,6 +69,11 @@ local DEFAULT_CONFIG = {
 			---@param prompt_bufnr number
 			function(path, prompt_bufnr)
 				vim.fn.setreg("+", path)
+
+				vim.notify(
+					'copied JSONPath "' .. utils:truncate_overflow(path, 35, "…") .. '" to clipboard',
+					vim.log.levels.INFO
+				)
 			end,
 		},
 	},
@@ -127,7 +132,7 @@ local function show_picker(entries, buffer, xopts)
 									bufnr = buffer,
 									pos = {
 										selection.lnum - 1,
-										selection.index,
+										selection.col,
 									},
 								}),
 								buffer
