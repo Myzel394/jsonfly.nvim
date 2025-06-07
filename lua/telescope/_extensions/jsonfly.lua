@@ -17,6 +17,7 @@
 --
 ---@class Commands
 ---@field add_key string[] - Add the currently entered key to the JSON. Must be of type [string, string] <mode, key>; Example: {"n", "a"} -> When in normal mode, press "a" to add the key; Example: {"i", "<C-a>"} -> When in insert mode, press <C-a> to add the key; Default: {"i", "<C-a>"}
+---@field copy_jsonpath [string, string, function] - Copy the JSONPath of the currently selected key. jsonpath must be installed. Must be of type [string, string, function] <mode, key, (path: string, bufnr: number) -> void> - Example: {"n", "<C-j>", function(path) vim.fn.setreg("+", path) end} -> When in normal mode, press <C-j> to copy the JSONPath to the clipboard; Default: {"i", "<C-j>", a function that will copy the JSONPath to the clipboard}
 ---
 ---@class Highlights
 ---@field number string - Highlight group for numbers, Default: "@number.json"
@@ -61,6 +62,20 @@ local DEFAULT_CONFIG = {
 	use_cache = 500,
 	commands = {
 		add_key = { "i", "<C-a>" },
+		copy_jsonpath = {
+			"i",
+			"<C-j>",
+			---@param path string
+			---@param prompt_bufnr number
+			function(path, prompt_bufnr)
+				vim.fn.setreg("+", path)
+
+				vim.notify(
+					'copied JSONPath "' .. utils:truncate_overflow(path, 35, "…") .. '" to clipboard',
+					vim.log.levels.INFO
+				)
+			end,
+		},
 	},
 }
 
@@ -101,6 +116,34 @@ local function show_picker(entries, buffer, xopts)
 
 					insert:insert_new_key(entries, key_descriptor, buffer)
 				end)
+
+				if global_config.commands.copy_jsonpath and utils:is_module_available("jsonpath") then
+					map(
+						global_config.commands.copy_jsonpath[1],
+						global_config.commands.copy_jsonpath[2],
+						function(prompt_bufnr)
+							local jsonpath = require("jsonpath")
+
+							local current_picker = action_state.get_current_picker(prompt_bufnr)
+							local selection = current_picker:get_selection()
+
+							local path = jsonpath.get(
+								vim.treesitter.get_node({
+									bufnr = buffer,
+									pos = {
+										selection.lnum - 1,
+										selection.col,
+									},
+								}),
+								buffer
+							)
+
+							if path then
+								global_config.commands.copy_jsonpath[3](path, prompt_bufnr)
+							end
+						end
+					)
+				end
 
 				return true
 			end,
@@ -196,7 +239,10 @@ return require("telescope").register_extension({
 			end
 
 			if global_config.backend == "lsp" then
-				local params = vim.lsp.util.make_position_params(xopts.winnr)
+				local params = vim.lsp.util.make_position_params(
+					xopts.winnr,
+					"utf-8"
+				)
 
 				-- Check i
 				local clients = vim.lsp.get_clients()
